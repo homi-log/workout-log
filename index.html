@@ -104,22 +104,29 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:3
 .ac-item:last-child{border-bottom:none}
 .ac-item:active{background:var(--accent-light);color:var(--accent)}
 .ac-count{font-family:var(--mono);font-size:.62rem;color:var(--ink3);float:right}
-.ex-input-bottom{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
 .ex-input-field{display:flex;flex-direction:column;gap:3px}
 .ex-input-field label{font-family:var(--mono);font-size:.58rem;letter-spacing:.06em;color:var(--ink3);text-transform:uppercase}
-.ex-input-field-wide{grid-column:1/-1}
 .ex-input-field input{font-family:var(--mono);font-size:.82rem;padding:8px 10px;border:1px solid var(--rule);border-radius:6px;background:#fff;color:var(--ink);outline:none;width:100%}
 .ex-input-field input:focus{border-color:var(--accent)}
-.arrow-btn{font-family:var(--mono);font-size:.8rem;padding:0 12px;border:1px solid #9ec5fe;border-radius:6px;background:#e7f1ff;color:#1d6fa4;cursor:pointer;flex-shrink:0;height:28px;font-weight:500}
-.arrow-btn:active{background:#b6d4fe;border-color:#5ba3d9}
-.ex-input-actions{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+/* 무게·세트·횟수 세트행 (헤더와 동일 그리드로 정렬 보장) */
+.set-header,.set-row{display:grid;grid-template-columns:1fr 1fr 1fr 26px;gap:6px;align-items:center}
+.set-header{margin:8px 0 2px}
+.set-header span{font-family:var(--mono);font-size:.58rem;letter-spacing:.06em;color:var(--ink3);text-transform:uppercase;text-align:center}
+.set-row{margin-top:6px}
+.set-row input{font-family:var(--mono);font-size:.82rem;padding:8px 6px;border:1px solid var(--rule);border-radius:6px;background:#fff;color:var(--ink);outline:none;width:100%;text-align:center}
+.set-row input:focus{border-color:var(--accent)}
+.set-del{font-size:.72rem;height:34px;border:1px solid var(--rule);border-radius:6px;background:var(--paper);color:var(--warn);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.set-del:active{background:#fbeaea;border-color:var(--warn)}
+.add-set-btn{font-family:var(--mono);font-size:.66rem;color:var(--ink2);background:none;border:1px dashed var(--rule);border-radius:6px;padding:6px;cursor:pointer;width:100%;margin-top:7px}
+.add-set-btn:active{background:var(--accent-light);color:var(--accent);border-color:var(--accent)}
+.ex-memo{margin-top:10px}
+.ex-input-actions{display:flex;justify-content:flex-start;align-items:center;margin-top:10px}
 .order-btns{display:flex;gap:4px}
 .order-btn{font-size:.75rem;width:28px;height:28px;border:1px solid var(--rule);border-radius:6px;background:var(--paper);color:var(--ink3);cursor:pointer;display:flex;align-items:center;justify-content:center}
 .order-btn:active{background:var(--accent-light);color:var(--accent);border-color:var(--accent)}
 .add-ex-btn{font-family:var(--mono);font-size:.72rem;color:var(--accent);background:none;border:1px dashed var(--accent);border-radius:8px;padding:9px;cursor:pointer;width:100%;margin-bottom:14px;transition:background .15s}
 .add-ex-btn:active{background:var(--accent-light)}
 .form-actions{display:flex;gap:8px;justify-content:flex-end;padding-top:14px;border-top:1px solid var(--rule)}
-.field-hint{font-family:var(--mono);font-size:.6rem;color:var(--ink3);display:flex;gap:10px;padding:0 4px;margin-bottom:4px}
 
 /* 추이 */
 .trend-controls{margin-bottom:20px}
@@ -203,13 +210,6 @@ svg#trend-svg{width:100%;height:180px;overflow:visible}
           </select>
         </div>
       </div>
-      <div class="field-hint">
-        <span style="width:16px"></span>
-        <span style="flex:1">운동명</span>
-        <span style="width:80px">무게</span>
-        <span style="width:44px">세트</span>
-        <span style="width:44px">횟수</span>
-      </div>
       <div class="ex-inputs" id="ex-inputs"></div>
       <button class="add-ex-btn" onclick="addExRow()">＋ 운동 추가</button>
       <div class="form-actions">
@@ -263,6 +263,37 @@ let editingId = null;
 const STORAGE_KEY = 'workout_db';
 const CLOUD_URL_KEY = 'workout_cloud_url'; // Apps Script 웹앱 URL (기기별 localStorage, 코드/저장소엔 미포함)
 
+// ── 운동 데이터 정규화 ──
+// exercise = { name, note, rows:[{weight,sets,reps}] }
+// 예전 형식 { name, weight, sets, reps, note }(단일)도 자동 변환해 호환합니다.
+function exRows(e){
+  if(!e) return [];
+  if(Array.isArray(e.rows)) return e.rows;
+  if(e.weight||e.sets||e.reps) return [{weight:e.weight||'',sets:e.sets||'',reps:e.reps||''}];
+  return [];
+}
+function normalizeExercise(e){
+  if(!e || typeof e!=='object') return {name:'',note:'',rows:[]};
+  let rows;
+  if(Array.isArray(e.rows)){
+    rows = e.rows.map(r=>({ weight:String(r.weight??''), sets:String(r.sets??''), reps:String(r.reps??'') }));
+  } else if(e.weight||e.sets||e.reps){
+    rows = [{ weight:String(e.weight||''), sets:String(e.sets||''), reps:String(e.reps||'') }];
+  } else {
+    rows = [];
+  }
+  return { name:e.name||'', note:e.note||'', rows };
+}
+function normalizeDB(){
+  DB.forEach(s=>{ if(Array.isArray(s.exercises)) s.exercises = s.exercises.map(normalizeExercise); });
+}
+// 한 운동에서 가장 무거운 세트의 무게(숫자) — 추이 분석용
+function exMaxWeight(e){
+  let max=null;
+  exRows(e).forEach(r=>{ const n=extractLastNum(r.weight); if(n!==null && (max===null||n>max)) max=n; });
+  return max;
+}
+
 // ── 클라우드(Google 시트) 연동 ──
 function getCloudUrl(){ return (localStorage.getItem(CLOUD_URL_KEY) || '').trim(); }
 
@@ -308,6 +339,7 @@ async function loadDB(){
       const data = await cloudLoad(url);
       if(data){
         DB = data;
+        normalizeDB();
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(DB)); } catch(e){}
         return;
       }
@@ -319,6 +351,7 @@ async function loadDB(){
     const value = localStorage.getItem(STORAGE_KEY);
     if(value){
       DB = JSON.parse(value);
+      normalizeDB();
       return;
     }
   } catch(e) {
@@ -376,6 +409,7 @@ async function handleJSONFile(event){
       DB = data;
       toast(`✓ ${data.length}개 세션 불러옴`);
     }
+    normalizeDB();
     await saveDB();
     renderLog();
   } catch(e){
@@ -463,15 +497,18 @@ function renderLog(){
     const memoHtml = s.memo?`<span style="margin-left:6px;font-size:.68rem;color:var(--ink3)">${s.memo}</span>`:'';
 
     const exCards = s.exercises.map((e,i)=>{
-      const chips=[];
-      if(e.weight) chips.push(`<span class="ex-chip">${e.weight}kg</span>`);
-      if(e.sets)   chips.push(`<span class="ex-chip">${e.sets}세트</span>`);
-      if(e.reps)   chips.push(`<span class="ex-chip">${e.reps}회</span>`);
+      const rowsHtml = exRows(e).map(r=>{
+        const chips=[];
+        if(r.weight) chips.push(`<span class="ex-chip">${r.weight}kg</span>`);
+        if(r.sets)   chips.push(`<span class="ex-chip">${r.sets}세트</span>`);
+        if(r.reps)   chips.push(`<span class="ex-chip">${r.reps}회</span>`);
+        return chips.length?`<div class="ex-chips">${chips.join('')}</div>`:'';
+      }).join('');
       return `<div class="ex-card">
         <span class="ex-num">${i+1}</span>
         <div class="ex-info">
           <div class="ex-name">${e.name}</div>
-          ${chips.length?`<div class="ex-chips">${chips.join('')}</div>`:''}
+          ${rowsHtml}
           ${e.note?`<div class="ex-note">${e.note}</div>`:''}
         </div>
       </div>`;
@@ -544,6 +581,8 @@ async function convertPlanned(id){
 // ══════════════════════════════════
 // 새 세션 입력
 // ══════════════════════════════════
+function escAttr(v){ return String(v==null?'':v).replace(/"/g,'&quot;'); }
+
 function addExRow(data, container){
   rowCount++;
   const n=rowCount, d=data||{};
@@ -554,39 +593,52 @@ function addExRow(data, container){
     <div class="ex-input-top">
       <span class="ex-input-num">${wrap.children.length+1}</span>
       <div class="autocomplete-wrap">
-        <input type="text" placeholder="운동명" value="${d.name||''}"
+        <input type="text" placeholder="운동명" value="${escAttr(d.name)}"
           oninput="onAcInput(this,${n})" onblur="hideAc(${n})" autocomplete="off">
         <div class="ac-dropdown" id="ac-${n}"></div>
       </div>
-      <button class="btn btn-danger" onclick="removeExRow(${n})">✕</button>
+      <button type="button" class="btn btn-danger" onclick="removeExRow(${n})">✕</button>
     </div>
-    <div class="ex-input-bottom">
-      <div class="ex-input-field ex-input-field-wide">
-        <label>무게</label>
-        <input placeholder="예: 20 또는 16→20" value="${d.weight||''}" onfocus="saveInputFocus(this)" onclick="saveInputFocus(this)" onkeyup="saveInputFocus(this)">
-      </div>
-      <div class="ex-input-field">
-        <label>세트</label>
-        <input placeholder="예: 3" value="${d.sets||''}" onfocus="saveInputFocus(this)" onclick="saveInputFocus(this)" onkeyup="saveInputFocus(this)">
-      </div>
-      <div class="ex-input-field">
-        <label>횟수</label>
-        <input placeholder="예: 12" value="${d.reps||''}" onfocus="saveInputFocus(this)" onclick="saveInputFocus(this)" onkeyup="saveInputFocus(this)">
-      </div>
-      <div class="ex-input-field ex-input-field-wide">
-        <label>메모</label>
-        <input placeholder="예: 한쪽, 보조" value="${d.note||''}" onfocus="saveInputFocus(this)" onclick="saveInputFocus(this)" onkeyup="saveInputFocus(this)">
-      </div>
+    <div class="set-header"><span>무게</span><span>세트</span><span>횟수</span><span></span></div>
+    <div class="set-rows" id="setrows-${n}"></div>
+    <button type="button" class="add-set-btn" onclick="addSetRow(${n})">＋ 세트 행</button>
+    <div class="ex-input-field ex-memo">
+      <label>메모</label>
+      <input placeholder="예: 한쪽, 보조" value="${escAttr(d.note)}">
     </div>
     <div class="ex-input-actions">
       <div class="order-btns">
-        <button class="order-btn" onclick="moveRow(${n},-1)">↑</button>
-        <button class="order-btn" onclick="moveRow(${n},1)">↓</button>
-        <button class="arrow-btn" onmousedown="insertArrowDown(event)">→</button>
+        <button type="button" class="order-btn" onclick="moveRow(${n},-1)">↑</button>
+        <button type="button" class="order-btn" onclick="moveRow(${n},1)">↓</button>
       </div>
     </div>`;
   wrap.appendChild(div);
+  const rows=exRows(d);
+  if(rows.length) rows.forEach(r=>addSetRow(n,r));
+  else addSetRow(n,{});
   renumberRows(wrap);
+}
+
+// 무게·세트·횟수 한 행 추가
+function addSetRow(exN, d){
+  d=d||{};
+  const cont=document.getElementById('setrows-'+exN);
+  if(!cont) return;
+  const div=document.createElement('div');
+  div.className='set-row';
+  div.innerHTML=`
+    <input class="w" placeholder="예: 20" value="${escAttr(d.weight)}">
+    <input class="s" placeholder="예: 3" value="${escAttr(d.sets)}">
+    <input class="r" placeholder="예: 12" value="${escAttr(d.reps)}">
+    <button type="button" class="set-del" onclick="removeSetRow(this)" title="이 행 삭제">✕</button>`;
+  cont.appendChild(div);
+}
+// 세트 행 삭제 (마지막 한 행은 값만 비움)
+function removeSetRow(btn){
+  const row=btn.closest('.set-row'); if(!row) return;
+  const cont=row.parentElement;
+  if(cont.children.length>1) row.remove();
+  else row.querySelectorAll('input').forEach(i=>i.value='');
 }
 
 function renumberRows(wrap){
@@ -613,22 +665,6 @@ function moveRow(n,dir){
   else wrap.insertBefore(wrap.children[tgt],el);
   renumberRows(wrap);
 }
-let savedInput=null, savedPos=0;
-function saveInputFocus(el){
-  savedInput=el;
-  // 비동기로 실행해 클릭 후 커서가 이동한 뒤 위치를 정확히 읽음
-  requestAnimationFrame(()=>{ savedPos=el.selectionStart??el.value.length; });
-}
-function insertArrowDown(e){
-  e.preventDefault(); // 버튼 클릭으로 포커스 이동 방지
-  if(!savedInput) return;
-  const val=savedInput.value;
-  savedInput.value=val.slice(0,savedPos)+'→'+val.slice(savedPos);
-  savedInput.focus();
-  const newPos=savedPos+1;
-  savedInput.setSelectionRange(newPos,newPos);
-  savedPos=newPos;
-}
 function onAcInput(input,n){
   const q=input.value.trim().toLowerCase();
   const dd=document.getElementById('ac-'+n);
@@ -639,12 +675,13 @@ function onAcInput(input,n){
     ${x.name}<span class="ac-count">${x.count}회</span></div>`).join('');
   dd.classList.add('show');
 }
-// 특정 운동의 가장 최근 기록(무게/세트/횟수) 반환
+// 특정 운동의 가장 최근 기록(첫 세트행) 반환
 function getLatestRecord(name){
   let latest=null, latestDate='';
   DB.forEach(s=>s.exercises.forEach(e=>{
-    if(e.name===name && (e.weight||e.sets||e.reps)){
-      if(s.date>latestDate){ latestDate=s.date; latest=e; }
+    if(e.name===name){
+      const rows=exRows(e);
+      if(rows.length && s.date>latestDate){ latestDate=s.date; latest=rows[0]; }
     }
   }));
   return latest;
@@ -656,20 +693,14 @@ function selectAc(n,name){
   row.querySelector('.autocomplete-wrap input').value=name;
   document.getElementById('ac-'+n).classList.remove('show');
 
-  // 같은 운동의 가장 최근 무게를 자동으로 채움 (무게 칸이 비어 있을 때만)
+  // 같은 운동의 가장 최근 기록을 첫 세트행에 자동 채움 (빈 칸만)
   const latest=getLatestRecord(name);
-  if(latest){
-    const inputs=row.querySelectorAll('.ex-input-bottom input');
-    // 순서: [0]무게 [1]세트 [2]횟수 [3]메모
-    if(inputs[0] && !inputs[0].value.trim() && latest.weight){
-      inputs[0].value=latest.weight;
-    }
-    if(inputs[1] && !inputs[1].value.trim() && latest.sets){
-      inputs[1].value=latest.sets;
-    }
-    if(inputs[2] && !inputs[2].value.trim() && latest.reps){
-      inputs[2].value=latest.reps;
-    }
+  const first=row.querySelector('.set-row');
+  if(latest && first){
+    const w=first.querySelector('.w'), s=first.querySelector('.s'), r=first.querySelector('.r');
+    if(w && !w.value.trim() && latest.weight) w.value=latest.weight;
+    if(s && !s.value.trim() && latest.sets)   s.value=latest.sets;
+    if(r && !r.value.trim() && latest.reps)   r.value=latest.reps;
     toast('최근 기록 자동 입력됨');
   }
 }
@@ -685,15 +716,15 @@ function clearForm(){
   addExRow();addExRow();addExRow();
 }
 function getExRowData(wrap){
-  return Array.from(wrap.children).map(row=>{
-    const inputs=row.querySelectorAll('input');
-    return {
-      name:inputs[0]?.value.trim()||'',
-      weight:inputs[1]?.value.trim()||'',
-      sets:inputs[2]?.value.trim()||'',
-      reps:inputs[3]?.value.trim()||'',
-      note:inputs[4]?.value.trim()||'',
-    };
+  return Array.from(wrap.children).map(card=>{
+    const name=card.querySelector('.autocomplete-wrap input')?.value.trim()||'';
+    const note=card.querySelector('.ex-memo input')?.value.trim()||'';
+    const rows=Array.from(card.querySelectorAll('.set-row')).map(r=>({
+      weight:r.querySelector('.w')?.value.trim()||'',
+      sets:r.querySelector('.s')?.value.trim()||'',
+      reps:r.querySelector('.r')?.value.trim()||'',
+    })).filter(x=>x.weight||x.sets||x.reps);
+    return {name,note,rows};
   }).filter(e=>e.name);
 }
 async function saveSession(){
@@ -762,8 +793,9 @@ function maybeCloseModal(e){
 function populateTrendSelect(){
   const sel=document.getElementById('trend-ex'), cur=sel.value;
   const names=getExerciseNames().filter(x=>{
-    const recs=DB.flatMap(s=>s.exercises.filter(e=>e.name===x.name));
-    return recs.filter(e=>extractLastNum(e.weight)!==null).length>=2;
+    let cnt=0;
+    DB.forEach(s=>s.exercises.forEach(e=>{ if(e.name===x.name && exMaxWeight(e)!==null) cnt++; }));
+    return cnt>=2;
   });
   sel.innerHTML='<option value="">운동 선택…</option>'+
     names.map(x=>`<option value="${x.name}" ${x.name===cur?'selected':''}>${x.name} (${x.count}회)</option>`).join('');
@@ -781,8 +813,12 @@ function renderTrend(){
   }
   const records=[];
   DB.forEach(s=>s.exercises.forEach(e=>{
-    if(e.name===name) records.push({date:s.date,weight:e.weight,wNum:extractLastNum(e.weight),
-      sets:e.sets,reps:e.reps,note:e.note,src:s.src});
+    if(e.name!==name) return;
+    // 가장 무거운 세트를 대표값으로 사용
+    let best=null, bestN=null;
+    exRows(e).forEach(r=>{ const nn=extractLastNum(r.weight); if(nn!==null && (bestN===null||nn>bestN)){ bestN=nn; best=r; } });
+    const rr=best||exRows(e)[0]||{};
+    records.push({date:s.date,weight:rr.weight||'',wNum:bestN,sets:rr.sets||'',reps:rr.reps||'',note:e.note,src:s.src});
   }));
   records.sort((a,b)=>a.date.localeCompare(b.date));
   title.textContent=name; title.style.color='var(--ink)';
@@ -940,10 +976,10 @@ async function saveSyncSettings(){
   const localN=DB.length, cloudN=cloudData.length;
   if(cloudN>0 && localN>0){
     const useCloud=confirm(`클라우드에 세션 ${cloudN}개, 이 기기에 ${localN}개가 있습니다.\n\n[확인] = 클라우드 내용을 이 기기로 가져오기\n[취소] = 이 기기 내용을 클라우드로 올리기`);
-    if(useCloud){ DB=cloudData; localStorage.setItem(STORAGE_KEY,JSON.stringify(DB)); }
+    if(useCloud){ DB=cloudData; normalizeDB(); localStorage.setItem(STORAGE_KEY,JSON.stringify(DB)); }
     else { await saveDB(); }
   } else if(cloudN>0){
-    DB=cloudData; localStorage.setItem(STORAGE_KEY,JSON.stringify(DB));
+    DB=cloudData; normalizeDB(); localStorage.setItem(STORAGE_KEY,JSON.stringify(DB));
   } else if(localN>0){
     await saveDB();
   }
@@ -955,7 +991,7 @@ async function pullFromCloud(){
   syncStatus('불러오는 중…');
   try {
     const data=await cloudLoad();
-    DB=data; localStorage.setItem(STORAGE_KEY,JSON.stringify(DB));
+    DB=data; normalizeDB(); localStorage.setItem(STORAGE_KEY,JSON.stringify(DB));
     closeModal(); renderLog(); populateTrendSelect();
     toast('✓ 클라우드에서 '+data.length+'개 불러옴');
   } catch(e){
@@ -978,11 +1014,15 @@ function exportJSON(){
 function exportCSV(){
   const rows=[['날짜','출처','메모','운동명','무게','세트','횟수','운동메모']];
   [...DB].sort((a,b)=>a.date.localeCompare(b.date)).forEach(s=>
-    s.exercises.forEach(e=>rows.push([
-      s.date,
-      s.src==='personal'?'개인일지':s.src==='planned'?'예정':'세션지',
-      s.memo||'',e.name,e.weight||'',e.sets||'',e.reps||'',e.note||'',
-    ]))
+    s.exercises.forEach(e=>{
+      const srcLbl=s.src==='personal'?'개인일지':s.src==='planned'?'예정':'세션지';
+      const ers=exRows(e);
+      if(!ers.length){
+        rows.push([s.date,srcLbl,s.memo||'',e.name,'','','',e.note||'']);
+      } else {
+        ers.forEach(r=>rows.push([s.date,srcLbl,s.memo||'',e.name,r.weight||'',r.sets||'',r.reps||'',e.note||'']));
+      }
+    })
   );
   const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
   const filename='운동일지_'+new Date().toISOString().slice(0,10)+'.csv';

@@ -69,6 +69,14 @@ function saveData_(data){
   writeView_(data);
 }
 
+// 운동의 세트행 배열 반환 (신형 rows[] 우선, 구형 단일 무게/세트/횟수 호환)
+function exRows_(ex){
+  if (!ex) return [];
+  if (Array.isArray(ex.rows)) return ex.rows;
+  if (ex.weight || ex.sets || ex.reps) return [{ weight: ex.weight, sets: ex.sets, reps: ex.reps }];
+  return [];
+}
+
 // 사람이 보기 좋은 표 자동 생성 (보기 전용 — 여기서 직접 편집해도 앱엔 반영되지 않습니다)
 function writeView_(data){
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -84,14 +92,21 @@ function writeView_(data){
     var exs = Array.isArray(s.exercises) ? s.exercises : [];
     if (exs.length === 0) {
       rows.push([s.date || '', srcLabel[s.src] || s.src || '', s.memo || '', '', '', '', '', '']);
-    } else {
-      exs.forEach(function(ex){
-        rows.push([
-          s.date || '', srcLabel[s.src] || s.src || '', s.memo || '',
-          ex.name || '', ex.weight || '', ex.sets || '', ex.reps || '', ex.note || ''
-        ]);
-      });
+      return;
     }
+    exs.forEach(function(ex){
+      var setRows = exRows_(ex);
+      if (setRows.length === 0) {
+        rows.push([s.date || '', srcLabel[s.src] || s.src || '', s.memo || '', ex.name || '', '', '', '', ex.note || '']);
+      } else {
+        setRows.forEach(function(r){
+          rows.push([
+            s.date || '', srcLabel[s.src] || s.src || '', s.memo || '',
+            ex.name || '', r.weight || '', r.sets || '', r.reps || '', ex.note || ''
+          ]);
+        });
+      }
+    });
   });
   sh.getRange(1, 1, rows.length, header.length).setValues(rows);
   sh.setFrozenRows(1);
