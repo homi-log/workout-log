@@ -297,11 +297,19 @@ function exMaxWeight(e){
 // ── 클라우드(Google 시트) 연동 ──
 function getCloudUrl(){ return (localStorage.getItem(CLOUD_URL_KEY) || '').trim(); }
 
+// 무응답 방지용 타임아웃 fetch (기본 15초)
+function fetchWithTimeout(url, opts, ms){
+  const ctrl = new AbortController();
+  const t = setTimeout(()=>ctrl.abort(), ms||15000);
+  return fetch(url, Object.assign({}, opts, { signal: ctrl.signal }))
+    .finally(()=>clearTimeout(t));
+}
+
 // 지정 URL에서 전체 데이터 배열을 읽어옴
 async function cloudLoad(url){
   url = url || getCloudUrl();
   if(!url) return null;
-  const res = await fetch(url + (url.includes('?') ? '&' : '?') + 'action=load', { method:'GET', redirect:'follow' });
+  const res = await fetchWithTimeout(url + (url.includes('?') ? '&' : '?') + 'action=load', { method:'GET', redirect:'follow' });
   if(!res.ok) throw new Error('HTTP ' + res.status);
   const json = await res.json();
   if(!json || !Array.isArray(json.data)) throw new Error('형식 오류');
@@ -312,7 +320,7 @@ async function cloudLoad(url){
 async function cloudSave(data, url){
   url = url || getCloudUrl();
   if(!url) return false;
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     method:'POST',
     headers:{ 'Content-Type':'text/plain;charset=utf-8' },
     body: JSON.stringify({ action:'save', data: data }),
@@ -360,16 +368,15 @@ async function loadDB(){
   DB = JSON.parse(JSON.stringify(SEED)); // SEED는 빈 배열
 }
 
-// 저장: 로컬 캐시(항상) + 클라우드(연결 시)
-async function saveDB(){
+// 저장: 로컬 캐시(즉시) + 클라우드(백그라운드 — UI를 막지 않음)
+function saveDB(){
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(DB));
   } catch(e){
     toast('⚠ 저장 중 오류');
   }
   if(getCloudUrl()){
-    try { await cloudSave(DB); }
-    catch(e){ toast('⚠ 클라우드 저장 실패 (로컬엔 저장됨)'); }
+    cloudSave(DB).catch(()=>toast('⚠ 클라우드 저장 실패 (로컬엔 저장됨)'));
   }
 }
 
@@ -727,18 +734,25 @@ function getExRowData(wrap){
     return {name,note,rows};
   }).filter(e=>e.name);
 }
-async function saveSession(){
+let savingSession=false;
+function saveSession(){
+  if(savingSession) return;              // 중복 클릭 방지
   const date=document.getElementById('in-date').value;
   if(!date){alert('날짜를 입력해주세요.');return;}
   const exercises=getExRowData(document.getElementById('ex-inputs'));
   if(!exercises.length){alert('운동을 입력해주세요.');return;}
-  DB.push({id:uid(),date,src:document.getElementById('in-src').value,
-    memo:document.getElementById('in-memo').value.trim(),exercises});
-  await saveDB();
-  toast('✓ 저장되었습니다.');
-  clearForm();
-  switchTab('log');
-  renderLog();
+  savingSession=true;
+  try {
+    DB.push({id:uid(),date,src:document.getElementById('in-src').value,
+      memo:document.getElementById('in-memo').value.trim(),exercises});
+    saveDB();                            // 로컬 즉시 저장 + 클라우드 백그라운드
+    toast('✓ 저장되었습니다.');
+    clearForm();
+    switchTab('log');
+    renderLog();
+  } finally {
+    savingSession=false;
+  }
 }
 
 // ══════════════════════════════════
