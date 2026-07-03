@@ -152,6 +152,7 @@ svg#trend-svg{width:100%;height:180px;overflow:visible}
   <header class="app-header">
     <div class="app-title"><span>WORKOUT LOG</span>운동일지</div>
     <div class="header-actions">
+      <button class="btn btn-ghost btn-sm" id="sync-btn" onclick="openSyncSettings()" title="Google 시트 클라우드 동기화">☁</button>
       <button class="btn btn-ghost btn-sm" onclick="importJSON()" title="JSON 파일에서 불러오기">불러오기</button>
       <button class="btn btn-ghost btn-sm" onclick="exportCSV()">CSV</button>
       <button class="btn btn-ghost btn-sm" onclick="exportJSON()">JSON</button>
@@ -252,9 +253,61 @@ let currentSrcFilter = '';
 let rowCount = 0;
 let editingId = null;
 const STORAGE_KEY = 'workout_db';
+const CLOUD_URL_KEY = 'workout_cloud_url'; // Apps Script 웹앱 URL (기기별 localStorage, 코드/저장소엔 미포함)
 
-// 저장된 데이터 불러오기 (브라우저 localStorage, 없으면 빈 상태)
+// ── 클라우드(Google 시트) 연동 ──
+function getCloudUrl(){ return (localStorage.getItem(CLOUD_URL_KEY) || '').trim(); }
+
+// 지정 URL에서 전체 데이터 배열을 읽어옴
+async function cloudLoad(url){
+  url = url || getCloudUrl();
+  if(!url) return null;
+  const res = await fetch(url + (url.includes('?') ? '&' : '?') + 'action=load', { method:'GET', redirect:'follow' });
+  if(!res.ok) throw new Error('HTTP ' + res.status);
+  const json = await res.json();
+  if(!json || !Array.isArray(json.data)) throw new Error('형식 오류');
+  return json.data;
+}
+
+// 전체 데이터 배열을 클라우드에 저장 (text/plain으로 CORS preflight 회피)
+async function cloudSave(data, url){
+  url = url || getCloudUrl();
+  if(!url) return false;
+  const res = await fetch(url, {
+    method:'POST',
+    headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action:'save', data: data }),
+    redirect:'follow'
+  });
+  if(!res.ok) throw new Error('HTTP ' + res.status);
+  return true;
+}
+
+// 헤더 ☁ 버튼에 연결 상태 표시
+function updateSyncBtn(){
+  const b = document.getElementById('sync-btn');
+  if(!b) return;
+  const on = !!getCloudUrl();
+  b.textContent = on ? '☁✓' : '☁';
+  b.style.color = on ? 'var(--accent)' : '';
+  b.title = on ? 'Google 시트 동기화: 연결됨' : 'Google 시트 클라우드 동기화 설정';
+}
+
+// 데이터 불러오기: 클라우드 우선, 실패/미설정 시 로컬 캐시
 async function loadDB(){
+  const url = getCloudUrl();
+  if(url){
+    try {
+      const data = await cloudLoad(url);
+      if(data){
+        DB = data;
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(DB)); } catch(e){}
+        return;
+      }
+    } catch(e){
+      toast('⚠ 클라우드 연결 실패 — 로컬 데이터 사용');
+    }
+  }
   try {
     const value = localStorage.getItem(STORAGE_KEY);
     if(value){
@@ -267,12 +320,16 @@ async function loadDB(){
   DB = JSON.parse(JSON.stringify(SEED)); // SEED는 빈 배열
 }
 
-// 현재 DB를 브라우저 localStorage에 저장
+// 저장: 로컬 캐시(항상) + 클라우드(연결 시)
 async function saveDB(){
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(DB));
   } catch(e){
     toast('⚠ 저장 중 오류');
+  }
+  if(getCloudUrl()){
+    try { await cloudSave(DB); }
+    catch(e){ toast('⚠ 클라우드 저장 실패 (로컬엔 저장됨)'); }
   }
 }
 
@@ -820,6 +877,92 @@ function copyExportText(){
   }
 }
 
+// ══════════════════════════════════
+// 클라우드 동기화 설정 모달
+// ══════════════════════════════════
+function openSyncSettings(){
+  const cur=getCloudUrl();
+  document.getElementById('modal-body').innerHTML=`
+    <p style="font-size:.8rem;color:var(--ink2);margin-bottom:12px;line-height:1.55">
+      Google 스프레드시트와 여러 기기 간 자동 동기화를 하려면,
+      배포한 <strong>Apps Script 웹앱 URL</strong>(<code>.../exec</code>)을 붙여넣으세요.<br>
+      이 값은 <strong>이 기기에만</strong> 저장되며 코드·저장소에는 올라가지 않습니다.
+    </p>
+    <label style="font-family:var(--mono);font-size:.62rem;letter-spacing:.07em;color:var(--ink3);text-transform:uppercase">웹앱 URL</label>
+    <input id="sync-url" type="url" value="${cur.replace(/"/g,'&quot;')}" placeholder="https://script.google.com/macros/s/.../exec"
+      style="width:100%;font-family:var(--mono);font-size:.72rem;padding:9px 10px;border:1px solid var(--rule);border-radius:6px;margin:6px 0 8px;background:#fff;color:var(--ink);outline:none">
+    <div id="sync-status" style="font-size:.72rem;min-height:18px;margin-bottom:10px;color:var(--ink3)"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="testSync()">연결 테스트</button>
+      <button class="btn btn-primary btn-sm" onclick="saveSyncSettings()">저장 및 동기화</button>
+      ${cur?`<button class="btn btn-ghost btn-sm" onclick="pullFromCloud()">클라우드에서 새로고침</button>
+      <button class="btn btn-danger btn-sm" onclick="disconnectSync()">연결 해제</button>`:''}
+    </div>`;
+  document.querySelector('#modal h2').textContent='클라우드 동기화';
+  document.querySelector('.modal-actions').style.display='none';
+  document.getElementById('modal-overlay').classList.add('show');
+}
+
+function syncStatus(msg,type){
+  const st=document.getElementById('sync-status');
+  if(!st) return;
+  st.style.color = type==='ok' ? 'var(--accent)' : type==='err' ? 'var(--warn)' : 'var(--ink3)';
+  st.textContent=msg;
+}
+
+async function testSync(){
+  const url=document.getElementById('sync-url').value.trim();
+  if(!url){ syncStatus('URL을 입력하세요.','err'); return; }
+  syncStatus('연결 중…');
+  try {
+    const data=await cloudLoad(url);
+    syncStatus('✓ 연결 성공 — 클라우드에 세션 '+data.length+'개','ok');
+  } catch(e){
+    syncStatus('✗ 연결 실패: '+e.message,'err');
+  }
+}
+
+async function saveSyncSettings(){
+  const url=document.getElementById('sync-url').value.trim();
+  if(!url){ syncStatus('URL을 입력하세요.','err'); return; }
+  syncStatus('연결 및 동기화 중…');
+  let cloudData;
+  try { cloudData=await cloudLoad(url); }
+  catch(e){ syncStatus('✗ 연결 실패: '+e.message+' — URL을 확인하세요.','err'); return; }
+  localStorage.setItem(CLOUD_URL_KEY,url);
+  const localN=DB.length, cloudN=cloudData.length;
+  if(cloudN>0 && localN>0){
+    const useCloud=confirm(`클라우드에 세션 ${cloudN}개, 이 기기에 ${localN}개가 있습니다.\n\n[확인] = 클라우드 내용을 이 기기로 가져오기\n[취소] = 이 기기 내용을 클라우드로 올리기`);
+    if(useCloud){ DB=cloudData; localStorage.setItem(STORAGE_KEY,JSON.stringify(DB)); }
+    else { await saveDB(); }
+  } else if(cloudN>0){
+    DB=cloudData; localStorage.setItem(STORAGE_KEY,JSON.stringify(DB));
+  } else if(localN>0){
+    await saveDB();
+  }
+  updateSyncBtn(); closeModal(); renderLog(); populateTrendSelect();
+  toast('✓ 클라우드 동기화 연결됨');
+}
+
+async function pullFromCloud(){
+  syncStatus('불러오는 중…');
+  try {
+    const data=await cloudLoad();
+    DB=data; localStorage.setItem(STORAGE_KEY,JSON.stringify(DB));
+    closeModal(); renderLog(); populateTrendSelect();
+    toast('✓ 클라우드에서 '+data.length+'개 불러옴');
+  } catch(e){
+    syncStatus('✗ 실패: '+e.message,'err');
+  }
+}
+
+function disconnectSync(){
+  if(!confirm('클라우드 연결을 해제할까요?\n이 기기의 데이터는 그대로 유지됩니다.')) return;
+  localStorage.removeItem(CLOUD_URL_KEY);
+  updateSyncBtn(); closeModal();
+  toast('연결 해제됨 (이 기기 저장만 사용)');
+}
+
 function exportJSON(){
   const content=JSON.stringify(DB,null,2);
   const filename='운동일지_'+new Date().toISOString().slice(0,10)+'.json';
@@ -846,6 +989,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   // 검색 입력 이벤트 연결
   document.getElementById('filter-ex').addEventListener('input', renderLog);
   clearForm();
+  updateSyncBtn();
 
   // 로딩 표시
   document.getElementById('session-list').innerHTML =
