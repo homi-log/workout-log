@@ -20,7 +20,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:3
 .app-header{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:2px solid var(--ink);padding-bottom:12px;margin-bottom:24px}
 .app-title{font-size:1.3rem;font-weight:700;letter-spacing:-.02em}
 .app-title span{font-family:var(--mono);font-size:.65rem;color:var(--ink3);display:block;margin-bottom:2px}
-.header-actions{display:flex;gap:6px}
+.header-actions{display:flex;gap:6px;align-items:center}
 
 /* 탭 */
 .tabs{display:flex;border-bottom:1px solid var(--rule);margin-bottom:20px}
@@ -35,6 +35,11 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:3
 .btn-convert{background:var(--plan-bg);color:var(--plan);border-color:var(--plan-border);font-size:.68rem;padding:5px 10px}
 .btn-danger{background:transparent;color:var(--warn);border-color:transparent;padding:4px 8px;font-size:.68rem}
 .btn-sm{padding:5px 10px;font-size:.68rem}
+#sync-btn{display:inline-flex;align-items:center;gap:2px;padding:5px 9px}
+#sync-btn svg{display:block}
+#sync-btn.synced{color:var(--accent);background:var(--accent-light);border-color:#c0dcc8}
+#sync-check{display:none}
+#sync-btn.synced #sync-check{display:inline;font-size:.6rem;font-weight:700;line-height:1}
 
 /* 필터바 */
 .filter-bar{display:flex;gap:8px;margin-bottom:16px;align-items:center}
@@ -152,7 +157,10 @@ svg#trend-svg{width:100%;height:180px;overflow:visible}
   <header class="app-header">
     <div class="app-title"><span>WORKOUT LOG</span>운동일지</div>
     <div class="header-actions">
-      <button class="btn btn-ghost btn-sm" id="sync-btn" onclick="openSyncSettings()" title="Google 시트 클라우드 동기화">☁</button>
+      <button class="btn btn-ghost btn-sm" id="sync-btn" onclick="openSyncSettings()" title="Google 시트 클라우드 동기화" aria-label="클라우드 동기화">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+        <span id="sync-check">✓</span>
+      </button>
       <button class="btn btn-ghost btn-sm" onclick="importJSON()" title="JSON 파일에서 불러오기">불러오기</button>
       <button class="btn btn-ghost btn-sm" onclick="exportCSV()">CSV</button>
       <button class="btn btn-ghost btn-sm" onclick="exportJSON()">JSON</button>
@@ -288,8 +296,7 @@ function updateSyncBtn(){
   const b = document.getElementById('sync-btn');
   if(!b) return;
   const on = !!getCloudUrl();
-  b.textContent = on ? '☁✓' : '☁';
-  b.style.color = on ? 'var(--accent)' : '';
+  b.classList.toggle('synced', on);
   b.title = on ? 'Google 시트 동기화: 연결됨' : 'Google 시트 클라우드 동기화 설정';
 }
 
