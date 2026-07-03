@@ -6,3 +6,6 @@ desktop.ini
 # Logs / temp
 *.log
 *.tmp
+
+# Local Claude Code settings (personal, not shared)
+.claude/settings.local.json
