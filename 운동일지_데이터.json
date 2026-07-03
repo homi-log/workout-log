@@ -1,0 +1,1101 @@
+[
+  {
+    "id": "s1-01",
+    "date": "2026-01-03",
+    "src": "session",
+    "memo": "",
+    "exercises": [
+      {
+        "name": "아웃타이",
+        "weight": "45",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "익스텐션",
+        "weight": "10",
+        "sets": "",
+        "reps": "",
+        "note": ""
+      },
+      {
+        "name": "브이스쿼트",
+        "weight": "",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "백런지",
+        "weight": "5",
+        "sets": "",
+        "reps": "10",
+        "note": ""
+      },
+      {
+        "name": "어시스트풀업",
+        "weight": "57.5",
+        "sets": "",
+        "reps": "",
+        "note": "보조"
+      }
+    ]
+  },
+  {
+    "id": "s1-02",
+    "date": "2026-01-13",
+    "src": "session",
+    "memo": "",
+    "exercises": [
+      {
+        "name": "???",
+        "weight": "",
+        "sets": "",
+        "reps": "10",
+        "note": "종목 미확인"
+      },
+      {
+        "name": "숄더프레스",
+        "weight": "5",
+        "sets": "",
+        "reps": "12",
+        "note": ""
+      },
+      {
+        "name": "벤트+사이드레이즈",
+        "weight": "2",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "체스트프레스",
+        "weight": "15",
+        "sets": "",
+        "reps": "13",
+        "note": ""
+      },
+      {
+        "name": "브이스쿼트",
+        "weight": "",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      }
+    ]
+  },
+  {
+    "id": "s1-03",
+    "date": "2026-01-24",
+    "src": "session",
+    "memo": "",
+    "exercises": [
+      {
+        "name": "스케이트스쿼트",
+        "weight": "15cm",
+        "sets": "",
+        "reps": "7",
+        "note": ""
+      },
+      {
+        "name": "인버티드로우",
+        "weight": "",
+        "sets": "",
+        "reps": "10",
+        "note": ""
+      },
+      {
+        "name": "숄조회전",
+        "weight": "6",
+        "sets": "",
+        "reps": "20",
+        "note": ""
+      },
+      {
+        "name": "스윙(원암)",
+        "weight": "16",
+        "sets": "",
+        "reps": "20",
+        "note": ""
+      }
+    ]
+  },
+  {
+    "id": "s1-04",
+    "date": "2026-01-27",
+    "src": "session",
+    "memo": "",
+    "exercises": [
+      {
+        "name": "풀오버",
+        "weight": "7",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "바벨로우",
+        "weight": "20",
+        "sets": "",
+        "reps": "5",
+        "note": ""
+      },
+      {
+        "name": "데드리프트",
+        "weight": "40",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "원암로우",
+        "weight": "10",
+        "sets": "",
+        "reps": "12",
+        "note": ""
+      }
+    ]
+  },
+  {
+    "id": "s1-05",
+    "date": "2026-01-31",
+    "src": "session",
+    "memo": "",
+    "exercises": [
+      {
+        "name": "원레그데드리프트",
+        "weight": "",
+        "sets": "",
+        "reps": "12",
+        "note": ""
+      },
+      {
+        "name": "이너타이",
+        "weight": "20",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "스플릿스쿼트",
+        "weight": "8",
+        "sets": "",
+        "reps": "12",
+        "note": ""
+      },
+      {
+        "name": "레그프레스",
+        "weight": "20",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      }
+    ]
+  },
+  {
+    "id": "s1-06",
+    "date": "2026-02-02",
+    "src": "session",
+    "memo": "",
+    "exercises": [
+      {
+        "name": "케이블크로스오버",
+        "weight": "6",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "스미스벤치",
+        "weight": "10",
+        "sets": "",
+        "reps": "3",
+        "note": ""
+      },
+      {
+        "name": "바벨스쿼트",
+        "weight": "40",
+        "sets": "",
+        "reps": "10",
+        "note": ""
+      }
+    ]
+  },
+  {
+    "id": "s1-07",
+    "date": "2026-02-06",
+    "src": "session",
+    "memo": "",
+    "exercises": [
+      {
+        "name": "암풀다운",
+        "weight": "20",
+        "sets": "",
+        "reps": "12",
+        "note": ""
+      },
+      {
+        "name": "랫풀다운",
+        "weight": "25",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "시티드로우",
+        "weight": "30",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "미들로우",
+        "weight": "10",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      }
+    ]
+  },
+  {
+    "id": "s1-08",
+    "date": "2026-02-10",
+    "src": "session",
+    "memo": "",
+    "exercises": [
+      {
+        "name": "레그컬",
+        "weight": "15",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "아웃타이",
+        "weight": "60",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "스미스스쿼트",
+        "weight": "10",
+        "sets": "",
+        "reps": "13",
+        "note": ""
+      },
+      {
+        "name": "트램",
+        "weight": "5",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "딥스",
+        "weight": "50",
+        "sets": "",
+        "reps": "12",
+        "note": "보조"
+      }
+    ]
+  },
+  {
+    "id": "s1-09",
+    "date": "2026-02-14",
+    "src": "session",
+    "memo": "",
+    "exercises": [
+      {
+        "name": "리버스런지",
+        "weight": "",
+        "sets": "",
+        "reps": "12",
+        "note": ""
+      },
+      {
+        "name": "원암인버티드로우",
+        "weight": "",
+        "sets": "",
+        "reps": "10",
+        "note": ""
+      },
+      {
+        "name": "푸쉬업",
+        "weight": "",
+        "sets": "",
+        "reps": "10",
+        "note": ""
+      },
+      {
+        "name": "윈드밀",
+        "weight": "6",
+        "sets": "",
+        "reps": "12",
+        "note": ""
+      }
+    ]
+  },
+  {
+    "id": "s1-10",
+    "date": "2026-02-19",
+    "src": "session",
+    "memo": "",
+    "exercises": [
+      {
+        "name": "풀오버",
+        "weight": "7",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "인클라인덤벨",
+        "weight": "10",
+        "sets": "",
+        "reps": "12",
+        "note": ""
+      },
+      {
+        "name": "인클라인케이블",
+        "weight": "5",
+        "sets": "",
+        "reps": "12",
+        "note": ""
+      },
+      {
+        "name": "언더그립밀리터리프레스",
+        "weight": "",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "라잉케이블",
+        "weight": "15",
+        "sets": "",
+        "reps": "",
+        "note": ""
+      }
+    ]
+  },
+  {
+    "id": "s1-11",
+    "date": "2026-02-21",
+    "src": "session",
+    "memo": "",
+    "exercises": [
+      {
+        "name": "랫풀다운",
+        "weight": "25",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "스미스로우",
+        "weight": "5",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "미들로우",
+        "weight": "10",
+        "sets": "",
+        "reps": "10",
+        "note": ""
+      },
+      {
+        "name": "밀프(웜업)",
+        "weight": "",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      }
+    ]
+  },
+  {
+    "id": "s1-12",
+    "date": "2026-02-24",
+    "src": "session",
+    "memo": "",
+    "exercises": [
+      {
+        "name": "겟업",
+        "weight": "",
+        "sets": "",
+        "reps": "12",
+        "note": ""
+      },
+      {
+        "name": "페이스풀",
+        "weight": "15",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "숄더프레스",
+        "weight": "5",
+        "sets": "",
+        "reps": "12",
+        "note": ""
+      },
+      {
+        "name": "사이드레터럴레이즈",
+        "weight": "3",
+        "sets": "",
+        "reps": "20",
+        "note": ""
+      },
+      {
+        "name": "브이스쿼트",
+        "weight": "",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      }
+    ]
+  },
+  {
+    "id": "s1-13",
+    "date": "2026-02-27",
+    "src": "session",
+    "memo": "",
+    "exercises": [
+      {
+        "name": "스케이트스쿼트",
+        "weight": "5cm",
+        "sets": "",
+        "reps": "8",
+        "note": ""
+      },
+      {
+        "name": "고릴라로우",
+        "weight": "12",
+        "sets": "",
+        "reps": "10",
+        "note": ""
+      },
+      {
+        "name": "숄더프레스",
+        "weight": "8",
+        "sets": "",
+        "reps": "5",
+        "note": ""
+      },
+      {
+        "name": "스윙",
+        "weight": "16",
+        "sets": "",
+        "reps": "14",
+        "note": ""
+      },
+      {
+        "name": "트위스트",
+        "weight": "20",
+        "sets": "",
+        "reps": "",
+        "note": ""
+      }
+    ]
+  },
+  {
+    "id": "s1-14",
+    "date": "2026-03-03",
+    "src": "session",
+    "memo": "",
+    "exercises": [
+      {
+        "name": "겟업",
+        "weight": "",
+        "sets": "",
+        "reps": "12",
+        "note": ""
+      },
+      {
+        "name": "암풀다운",
+        "weight": "20",
+        "sets": "",
+        "reps": "12",
+        "note": ""
+      },
+      {
+        "name": "랫풀다운",
+        "weight": "30",
+        "sets": "",
+        "reps": "12",
+        "note": ""
+      },
+      {
+        "name": "미들로우",
+        "weight": "15",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "데드리프트",
+        "weight": "40",
+        "sets": "",
+        "reps": "",
+        "note": "3세트"
+      }
+    ]
+  },
+  {
+    "id": "s1-15",
+    "date": "2026-03-10",
+    "src": "session",
+    "memo": "",
+    "exercises": [
+      {
+        "name": "원레그싯+로킥",
+        "weight": "",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "스플릿스쿼트",
+        "weight": "12",
+        "sets": "",
+        "reps": "12",
+        "note": ""
+      },
+      {
+        "name": "스쿼트(변형)",
+        "weight": "10",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "스윙",
+        "weight": "20",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      }
+    ]
+  },
+  {
+    "id": "s1-16",
+    "date": "2026-03-12",
+    "src": "session",
+    "memo": "",
+    "exercises": [
+      {
+        "name": "밀리터리프레스",
+        "weight": "20",
+        "sets": "",
+        "reps": "8",
+        "note": ""
+      },
+      {
+        "name": "인클라인플라이+프레스",
+        "weight": "",
+        "sets": "",
+        "reps": "10",
+        "note": ""
+      },
+      {
+        "name": "미들로우",
+        "weight": "15",
+        "sets": "",
+        "reps": "13",
+        "note": ""
+      },
+      {
+        "name": "풀오버",
+        "weight": "7",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      }
+    ]
+  },
+  {
+    "id": "s1-17",
+    "date": "2026-03-14",
+    "src": "session",
+    "memo": "",
+    "exercises": [
+      {
+        "name": "스케이트스쿼트",
+        "weight": "5cm",
+        "sets": "",
+        "reps": "9",
+        "note": ""
+      },
+      {
+        "name": "인버티드로우",
+        "weight": "",
+        "sets": "",
+        "reps": "12",
+        "note": ""
+      },
+      {
+        "name": "푸쉬업",
+        "weight": "15cm",
+        "sets": "",
+        "reps": "9",
+        "note": ""
+      },
+      {
+        "name": "스윙",
+        "weight": "28",
+        "sets": "",
+        "reps": "12",
+        "note": ""
+      },
+      {
+        "name": "L-싯 니업",
+        "weight": "",
+        "sets": "",
+        "reps": "12",
+        "note": ""
+      }
+    ]
+  },
+  {
+    "id": "s1-18",
+    "date": "2026-03-17",
+    "src": "session",
+    "memo": "",
+    "exercises": [
+      {
+        "name": "원레그데드리프트",
+        "weight": "",
+        "sets": "",
+        "reps": "12",
+        "note": ""
+      },
+      {
+        "name": "스탠딩아웃타이",
+        "weight": "20",
+        "sets": "",
+        "reps": "12",
+        "note": ""
+      },
+      {
+        "name": "핵스쿼트",
+        "weight": "",
+        "sets": "",
+        "reps": "",
+        "note": ""
+      },
+      {
+        "name": "스쿼트프레스",
+        "weight": "",
+        "sets": "",
+        "reps": "",
+        "note": ""
+      },
+      {
+        "name": "하이로우",
+        "weight": "20",
+        "sets": "",
+        "reps": "12",
+        "note": ""
+      },
+      {
+        "name": "시티드로우",
+        "weight": "30",
+        "sets": "",
+        "reps": "12",
+        "note": ""
+      }
+    ]
+  },
+  {
+    "id": "s1-19",
+    "date": "2026-03-20",
+    "src": "session",
+    "memo": "",
+    "exercises": [
+      {
+        "name": "플라이",
+        "weight": "20",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "와이드체스트",
+        "weight": "10",
+        "sets": "",
+        "reps": "12",
+        "note": ""
+      },
+      {
+        "name": "딥스머신",
+        "weight": "32.5",
+        "sets": "",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "바이킹프레스",
+        "weight": "",
+        "sets": "",
+        "reps": "10",
+        "note": ""
+      },
+      {
+        "name": "펜들럼스쿼트",
+        "weight": "",
+        "sets": "",
+        "reps": "12",
+        "note": ""
+      }
+    ]
+  },
+  {
+    "id": "s2-01",
+    "date": "2026-05-01",
+    "src": "personal",
+    "memo": "포르투",
+    "exercises": [
+      {
+        "name": "시티드로우",
+        "weight": "16.3",
+        "sets": "3",
+        "reps": "12",
+        "note": ""
+      },
+      {
+        "name": "체스트프레스",
+        "weight": "20.3",
+        "sets": "3",
+        "reps": "12",
+        "note": ""
+      },
+      {
+        "name": "밀리터리프레스",
+        "weight": "빈바",
+        "sets": "3",
+        "reps": "12",
+        "note": ""
+      },
+      {
+        "name": "사이드래터럴레이즈",
+        "weight": "2.5",
+        "sets": "3",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "오버헤드 익스텐션",
+        "weight": "5",
+        "sets": "3",
+        "reps": "12",
+        "note": ""
+      }
+    ]
+  },
+  {
+    "id": "s2-02",
+    "date": "2026-05-03",
+    "src": "personal",
+    "memo": "포르투",
+    "exercises": [
+      {
+        "name": "레그프레스",
+        "weight": "39→49",
+        "sets": "각 1+3",
+        "reps": "15→12",
+        "note": "워밍업39 작업49"
+      },
+      {
+        "name": "스플릿스쿼트",
+        "weight": "8",
+        "sets": "3",
+        "reps": "12",
+        "note": "한쪽"
+      },
+      {
+        "name": "루마니안 데드리프트",
+        "weight": "10",
+        "sets": "4",
+        "reps": "12",
+        "note": "빈바 1세트 포함"
+      },
+      {
+        "name": "캐틀벨 원암 스윙",
+        "weight": "16",
+        "sets": "15",
+        "reps": "8",
+        "note": "좌우"
+      },
+      {
+        "name": "경사 걷기",
+        "weight": "",
+        "sets": "",
+        "reps": "30분",
+        "note": ""
+      }
+    ]
+  },
+  {
+    "id": "s2-03",
+    "date": "2026-05-07",
+    "src": "personal",
+    "memo": "포르투",
+    "exercises": [
+      {
+        "name": "덤벨풀오버",
+        "weight": "7.5",
+        "sets": "3",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "암풀다운",
+        "weight": "20.5",
+        "sets": "4",
+        "reps": "15→10",
+        "note": "워밍업18 포함"
+      },
+      {
+        "name": "랫풀다운",
+        "weight": "22.5",
+        "sets": "3",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "인클라인 덤벨프레스",
+        "weight": "5",
+        "sets": "3",
+        "reps": "12",
+        "note": "한쪽"
+      },
+      {
+        "name": "루마니안 데드리프트",
+        "weight": "10",
+        "sets": "3",
+        "reps": "15",
+        "note": "빈바 1세트 포함"
+      },
+      {
+        "name": "경사 걷기",
+        "weight": "",
+        "sets": "",
+        "reps": "30분",
+        "note": "경사12 속도4"
+      }
+    ]
+  },
+  {
+    "id": "s2-04",
+    "date": "2026-05-09",
+    "src": "personal",
+    "memo": "포르투",
+    "exercises": [
+      {
+        "name": "레그프레스",
+        "weight": "40→50→69",
+        "sets": "각 1",
+        "reps": "",
+        "note": ""
+      },
+      {
+        "name": "스플릿스쿼트",
+        "weight": "8",
+        "sets": "3",
+        "reps": "12",
+        "note": "한쪽"
+      },
+      {
+        "name": "밀리터리프레스",
+        "weight": "11→13.5→16",
+        "sets": "4",
+        "reps": "12",
+        "note": ""
+      },
+      {
+        "name": "사이드래터럴레이즈",
+        "weight": "2.5",
+        "sets": "3",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "캐틀벨 원암 스윙",
+        "weight": "16",
+        "sets": "10",
+        "reps": "8",
+        "note": "좌우"
+      },
+      {
+        "name": "경사 걷기",
+        "weight": "",
+        "sets": "",
+        "reps": "30분",
+        "note": "경사12 속도4"
+      }
+    ]
+  },
+  {
+    "id": "p-0514",
+    "date": "2026-05-14",
+    "src": "personal",
+    "memo": "Day A · 하체+케틀벨",
+    "exercises": [
+      {
+        "name": "레그프레스",
+        "weight": "39→80→60",
+        "sets": "각 1+3",
+        "reps": "15→10→15",
+        "note": "워밍업 39 / 작업 60"
+      },
+      {
+        "name": "스플릿스쿼트",
+        "weight": "8",
+        "sets": "3",
+        "reps": "12",
+        "note": "한쪽"
+      },
+      {
+        "name": "이너타이",
+        "weight": "18→20.3",
+        "sets": "3",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "레그컬",
+        "weight": "16.6→18→20.3",
+        "sets": "3",
+        "reps": "15",
+        "note": ""
+      },
+      {
+        "name": "캐틀벨 스윙",
+        "weight": "20->24",
+        "sets": "1+9",
+        "reps": "12",
+        "note": "1분 어택"
+      }
+    ]
+  },
+  {
+    "id": "p-0612",
+    "date": "2026-06-12",
+    "src": "personal",
+    "memo": "컨디션 보통. PT 복습.",
+    "exercises": [
+      {
+        "name": "코사크 스쿼트",
+        "weight": "4",
+        "sets": "3",
+        "reps": "10",
+        "note": "케틀벨"
+      },
+      {
+        "name": "하프 니링 오픈북+오버헤드 리치",
+        "weight": "0",
+        "sets": "1",
+        "reps": "10",
+        "note": ""
+      },
+      {
+        "name": "플라이",
+        "weight": "10",
+        "sets": "3",
+        "reps": "12",
+        "note": "오른쪽 어깨 불편."
+      },
+      {
+        "name": "백익스텐션 덤벨 로우",
+        "weight": "3",
+        "sets": "3",
+        "reps": "15",
+        "note": "다리 후면이 더 느껴지고 등은 잘 안 느껴짐"
+      },
+      {
+        "name": "덤벨 오버헤드 익스텐션",
+        "weight": "7",
+        "sets": "3",
+        "reps": "12",
+        "note": ""
+      }
+    ]
+  },
+  {
+    "id": "pt-0604",
+    "date": "2026-06-04",
+    "src": "session",
+    "memo": "고관절 가동성·흉추 회전성·자세 교정",
+    "exercises": [
+      {
+        "name": "코사크 스쿼트",
+        "weight": "",
+        "sets": "",
+        "reps": "",
+        "note": "케틀벨을 뒤통수 뒤에 위치, 겨드랑이 열어 가슴 열기. 한쪽 이동 시 엉덩이 뒤로 빼며 고관절 접고 반대 다리 길게 펴 내전근 이완. 시선 아래로 허리 꺾임 방지. → 고관절 가동성·내전근 유연성·좌우균형·굽은등 개선"
+      },
+      {
+        "name": "하프 니링 오픈북+오버헤드 리치",
+        "weight": "",
+        "sets": "",
+        "reps": "",
+        "note": "코사크로 상체 연 상태에서 이어서. 팔 올릴 때 턱·가슴·손 함께 움직이며 흐름 유지, 복부 힘으로 허리 꺾임 방지. → 흉추 회전성·가슴 열림·어깨 가동·자세 교정"
+      }
+    ]
+  },
+  {
+    "id": "pt-0608",
+    "date": "2026-06-08",
+    "src": "session",
+    "memo": "등·어깨·후면사슬 강화·코어 안정성",
+    "exercises": [
+      {
+        "name": "백익스텐션 덤벨 로우",
+        "weight": "",
+        "sets": "",
+        "reps": "",
+        "note": "백익스텐션 자세, 햄스트링·둔근·기립근으로 몸통 고정, 복부 긴장 유지. 당길 때 팔꿈치는 옆구리 방향, 이완 시에도 후면사슬 긴장 유지. → 후면사슬 활성화·상하지 연결성·광배근 자극·몸통 안정성"
+      },
+      {
+        "name": "백익스텐션 바벨 로우",
+        "weight": "",
+        "sets": "",
+        "reps": "",
+        "note": "백익스텐션 자세 유지, 둔근·햄스트링 긴장 끝까지. 손으로 들지 않고 팔꿈치를 뒤로 보내며 등으로, 그립은 따봉(손목 정렬). 시선은 아래로 목에 힘 빼기. 덤벨 로우보다 더 큰 부하. → 후면사슬 지구력·광배근 활성화·견갑 안정성·힘 전달"
+      },
+      {
+        "name": "숄더프레스 머신",
+        "weight": "",
+        "sets": "",
+        "reps": "",
+        "note": "등받이를 바라보고 앉아 의자 각도로 상체 세팅, 복부·몸통 힘으로 고정. 밀 때 어깨 으쓱 금지, 팔꿈치 펴기보다 손바닥으로 지그시 밀기. 내릴 때 측면 삼각근 긴장 유지. → 측면 삼각근 자극·코어 안정성·어깨 컨트롤·보상패턴 감소"
+      }
+    ]
+  },
+  {
+    "id": "pt-0610",
+    "date": "2026-06-10",
+    "src": "session",
+    "memo": "가슴·흉추 가동성",
+    "exercises": [
+      {
+        "name": "덤벨 플라이",
+        "weight": "",
+        "sets": "",
+        "reps": "",
+        "note": "등 뒤 요가볼로 흉추 커브 만들어 가슴 충분히 열기. 벌릴 때 겨드랑이 넓게 열며 가슴 늘어남(팔꿈치 처짐 주의), 모을 때 겨드랑이로 지그시 닫기. 다리·복부 힘으로 좌우 흔들림 방지. → 가슴 이완범위·내측 수축 자극·코어 안정성"
+      },
+      {
+        "name": "덤벨 체스트 프레스",
+        "weight": "",
+        "sets": "",
+        "reps": "",
+        "note": "요가볼 위 몸통 고정. 밀 때 흉추 커브로 손이 아닌 가슴으로 밀리는 느낌, 겨드랑이 닫는 힘만 추가. 내릴 때 팔꿈치 접으며 겨드랑이 열림 유지(어깨 후면 의자에 닿아도 무방), 무게 저항 받으며 천천히. 그립은 플라이와 동일. → 가슴 근력·어깨 부담 감소·전신 협응력"
+      }
+    ]
+  }
+]

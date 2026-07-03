@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git --version)",
+      "Bash(gh --version)",
+      "Bash(gh auth *)",
+      "PowerShell(Rename-Item \"C:\\\\OneDrive\\\\hobby\\\\workout_log\\\\workout-log.html\" \"index.html\")"
+    ]
+  }
+}

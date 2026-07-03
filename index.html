@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>운동일지</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+:root {
+  --bg:#f5f2ed; --paper:#faf8f5; --ink:#1a1a18; --ink2:#4a4a46; --ink3:#8a8a84;
+  --rule:#ddd8ce; --accent:#2d5a3d; --accent-light:#eaf3ec; --warn:#c0392b;
+  --plan:#997300; --plan-bg:#fffbe6; --plan-border:#ffe066;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans KR',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:300;min-height:100vh;padding-bottom:60px}
+.shell{max-width:600px;margin:0 auto;padding:24px 16px 80px}
+
+/* 헤더 */
+.app-header{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:2px solid var(--ink);padding-bottom:12px;margin-bottom:24px}
+.app-title{font-size:1.3rem;font-weight:700;letter-spacing:-.02em}
+.app-title span{font-family:var(--mono);font-size:.65rem;color:var(--ink3);display:block;margin-bottom:2px}
+.header-actions{display:flex;gap:6px}
+
+/* 탭 */
+.tabs{display:flex;border-bottom:1px solid var(--rule);margin-bottom:20px}
+.tab{font-family:var(--mono);font-size:.72rem;letter-spacing:.04em;padding:10px 16px;cursor:pointer;color:var(--ink3);border:none;border-bottom:2px solid transparent;margin-bottom:-1px;background:none;transition:all .15s}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:500}
+.panel{display:none}.panel.active{display:block}
+
+/* 버튼 */
+.btn{font-family:var(--mono);font-size:.72rem;padding:8px 14px;border-radius:6px;cursor:pointer;border:1px solid;transition:all .15s;letter-spacing:.03em}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}.btn-primary:active{background:#1e3d2a}
+.btn-ghost{background:transparent;color:var(--ink2);border-color:var(--rule)}.btn-ghost:active{border-color:var(--ink3)}
+.btn-convert{background:var(--plan-bg);color:var(--plan);border-color:var(--plan-border);font-size:.68rem;padding:5px 10px}
+.btn-danger{background:transparent;color:var(--warn);border-color:transparent;padding:4px 8px;font-size:.68rem}
+.btn-sm{padding:5px 10px;font-size:.68rem}
+
+/* 필터바 */
+.filter-bar{display:flex;gap:8px;margin-bottom:16px;align-items:center}
+.filter-bar input{font-family:var(--mono);font-size:.75rem;padding:8px 10px;border:1px solid var(--rule);border-radius:6px;background:#fff;color:var(--ink);outline:none;flex:1}
+.filter-bar input:focus{border-color:var(--accent)}
+.src-tabs{display:flex;gap:4px}
+.src-tab{font-family:var(--mono);font-size:.65rem;padding:6px 10px;border:1px solid var(--rule);border-radius:20px;background:#fff;color:var(--ink3);cursor:pointer;white-space:nowrap;transition:all .15s}
+.src-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.count-badge{font-family:var(--mono);font-size:.65rem;color:var(--ink3);white-space:nowrap;flex-shrink:0}
+
+/* 세션 목록 */
+.session-list{display:flex;flex-direction:column;gap:10px}
+.session-card{background:var(--paper);border:1px solid var(--rule);border-radius:12px;overflow:hidden;transition:box-shadow .15s}
+.session-card.planned{background:var(--plan-bg);border-color:var(--plan-border)}
+.session-head{display:flex;align-items:center;justify-content:space-between;padding:13px 14px 11px;cursor:pointer;user-select:none;gap:10px}
+.session-head>div:first-child{min-width:0}
+.session-card.open .session-head{border-bottom:1px solid var(--rule)}
+.session-card.planned.open .session-head{border-bottom-color:var(--plan-border)}
+.session-date{font-family:var(--mono);font-size:.85rem;font-weight:500;color:var(--accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.session-card.planned .session-date{color:var(--plan)}
+.session-memo{font-size:.7rem;color:var(--ink3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.session-meta{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.session-source{font-family:var(--mono);font-size:.6rem;padding:2px 7px;border-radius:10px;border:1px solid var(--rule);white-space:nowrap;flex-shrink:0}
+.src-badge-session{background:#fff8ee;color:#8b4513;border-color:#ddd0b8}
+.src-badge-personal{background:var(--accent-light);color:var(--accent);border-color:#c0dcc8}
+.src-badge-planned{background:var(--plan-bg);color:var(--plan);border-color:var(--plan-border)}
+.session-chevron{font-size:.65rem;color:var(--ink3);transition:transform .2s}
+.session-card.open .session-chevron{transform:rotate(180deg)}
+
+/* 세션 바디 */
+.session-body{display:none;padding:10px 12px 12px}
+.session-card.open .session-body{display:block}
+.ex-list{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.ex-card{background:var(--bg);border-radius:8px;padding:9px 11px;display:flex;align-items:flex-start;gap:8px}
+.session-card.planned .ex-card{background:#fff8cc}
+.ex-num{font-family:var(--mono);font-size:.62rem;color:var(--ink3);width:14px;flex-shrink:0;padding-top:2px}
+.ex-info{flex:1;min-width:0}
+.ex-name{font-size:.85rem;font-weight:500}
+.ex-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.ex-chip{font-family:var(--mono);font-size:.65rem;color:var(--ink2);background:var(--paper);border:1px solid var(--rule);border-radius:4px;padding:1px 6px}
+.ex-note{font-size:.65rem;color:var(--ink3);margin-top:3px;line-height:1.4}
+.session-foot{display:flex;justify-content:flex-end;gap:6px;padding-top:8px;border-top:1px solid var(--rule)}
+
+/* 폼 */
+.form-card{background:var(--paper);border:1px solid var(--rule);border-radius:12px;padding:20px 16px;margin-bottom:20px}
+.form-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-family:var(--mono);font-size:.62rem;letter-spacing:.07em;color:var(--ink3);text-transform:uppercase}
+.field input,.field select{font-family:var(--sans);font-size:.85rem;padding:9px 11px;border:1px solid var(--rule);border-radius:6px;background:#fff;color:var(--ink);outline:none;-webkit-appearance:none}
+.field input:focus,.field select:focus{border-color:var(--accent)}
+.f-date input{width:150px;font-family:var(--mono)}.f-memo{flex:1;min-width:140px}.f-src select{width:100px}
+.ex-inputs{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.ex-input-card{background:var(--bg);border:1px solid var(--rule);border-radius:10px;padding:10px 12px}
+.ex-input-top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.ex-input-num{font-family:var(--mono);font-size:.65rem;color:var(--ink3);width:16px;flex-shrink:0}
+.autocomplete-wrap{position:relative;flex:1}
+.autocomplete-wrap input{width:100%;font-family:var(--sans);font-size:.85rem;padding:8px 10px;border:1px solid var(--rule);border-radius:6px;background:#fff;color:var(--ink);outline:none}
+.autocomplete-wrap input:focus{border-color:var(--accent)}
+.ac-dropdown{position:absolute;top:calc(100% + 3px);left:0;right:0;background:#fff;border:1px solid var(--rule);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.1);z-index:100;max-height:180px;overflow-y:auto;display:none}
+.ac-dropdown.show{display:block}
+.ac-item{padding:9px 12px;font-size:.83rem;cursor:pointer;border-bottom:1px solid var(--bg)}
+.ac-item:last-child{border-bottom:none}
+.ac-item:active{background:var(--accent-light);color:var(--accent)}
+.ac-count{font-family:var(--mono);font-size:.62rem;color:var(--ink3);float:right}
+.ex-input-bottom{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+.ex-input-field{display:flex;flex-direction:column;gap:3px}
+.ex-input-field label{font-family:var(--mono);font-size:.58rem;letter-spacing:.06em;color:var(--ink3);text-transform:uppercase}
+.ex-input-field-wide{grid-column:1/-1}
+.ex-input-field input{font-family:var(--mono);font-size:.82rem;padding:8px 10px;border:1px solid var(--rule);border-radius:6px;background:#fff;color:var(--ink);outline:none;width:100%}
+.ex-input-field input:focus{border-color:var(--accent)}
+.arrow-btn{font-family:var(--mono);font-size:.8rem;padding:0 12px;border:1px solid #9ec5fe;border-radius:6px;background:#e7f1ff;color:#1d6fa4;cursor:pointer;flex-shrink:0;height:28px;font-weight:500}
+.arrow-btn:active{background:#b6d4fe;border-color:#5ba3d9}
+.ex-input-actions{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.order-btns{display:flex;gap:4px}
+.order-btn{font-size:.75rem;width:28px;height:28px;border:1px solid var(--rule);border-radius:6px;background:var(--paper);color:var(--ink3);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.order-btn:active{background:var(--accent-light);color:var(--accent);border-color:var(--accent)}
+.add-ex-btn{font-family:var(--mono);font-size:.72rem;color:var(--accent);background:none;border:1px dashed var(--accent);border-radius:8px;padding:9px;cursor:pointer;width:100%;margin-bottom:14px;transition:background .15s}
+.add-ex-btn:active{background:var(--accent-light)}
+.form-actions{display:flex;gap:8px;justify-content:flex-end;padding-top:14px;border-top:1px solid var(--rule)}
+.field-hint{font-family:var(--mono);font-size:.6rem;color:var(--ink3);display:flex;gap:10px;padding:0 4px;margin-bottom:4px}
+
+/* 추이 */
+.trend-controls{margin-bottom:20px}
+.trend-controls select{font-family:var(--mono);font-size:.78rem;padding:9px 12px;border:1px solid var(--rule);border-radius:8px;background:#fff;color:var(--ink);outline:none;width:100%;-webkit-appearance:none}
+#trend-chart-wrap{background:var(--paper);border:1px solid var(--rule);border-radius:12px;padding:20px 16px}
+#trend-title{font-weight:500;margin-bottom:3px}
+#trend-subtitle{font-family:var(--mono);font-size:.65rem;color:var(--ink3);margin-bottom:16px}
+svg#trend-svg{width:100%;height:180px;overflow:visible}
+.trend-points-list{margin-top:16px;display:flex;flex-direction:column;gap:7px}
+.tp-row{display:flex;align-items:center;gap:8px;font-size:.75rem}
+.tp-date{font-family:var(--mono);color:var(--ink3);width:80px;flex-shrink:0;font-size:.68rem}
+.tp-bar-wrap{flex:1;height:5px;background:var(--bg);border-radius:3px;overflow:hidden}
+.tp-bar{height:100%;border-radius:3px;background:var(--accent)}
+.tp-val{font-family:var(--mono);width:60px;text-align:right;font-size:.72rem;color:var(--accent);flex-shrink:0}
+.tp-note{color:var(--ink3);font-size:.65rem;flex:1}
+
+/* 토스트 */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--ink);color:#fff;font-family:var(--mono);font-size:.72rem;padding:9px 18px;border-radius:20px;opacity:0;pointer-events:none;transition:all .2s;z-index:999;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* 빈 상태 */
+.empty{text-align:center;padding:50px 0;color:var(--ink3);font-size:.83rem}
+.empty-icon{font-size:1.8rem;margin-bottom:10px}
+
+/* 모달 */
+#modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:flex-end;justify-content:center}
+#modal-overlay.show{display:flex}
+#modal{background:var(--paper);border-radius:16px 16px 0 0;padding:24px 16px;width:100%;max-width:600px;max-height:85vh;overflow-y:auto}
+#modal h2{font-size:1rem;font-weight:600;margin-bottom:16px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:14px;border-top:1px solid var(--rule)}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="app-header">
+    <div class="app-title"><span>WORKOUT LOG</span>운동일지</div>
+    <div class="header-actions">
+      <button class="btn btn-ghost btn-sm" onclick="importJSON()" title="JSON 파일에서 불러오기">불러오기</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportCSV()">CSV</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportJSON()">JSON</button>
+    </div>
+    <input type="file" id="json-file-input" accept=".json,application/json" style="display:none" onchange="handleJSONFile(event)">
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('log')">기록 조회</button>
+    <button class="tab" onclick="switchTab('add')">새 세션</button>
+    <button class="tab" onclick="switchTab('trend')">추이 분석</button>
+  </div>
+
+  <!-- 기록 조회 -->
+  <div class="panel active" id="panel-log">
+    <div class="filter-bar">
+      <input type="text" id="filter-ex" placeholder="운동명 검색…">
+      <span class="count-badge" id="session-count"></span>
+    </div>
+    <div class="src-tabs" style="margin-bottom:14px">
+      <button class="src-tab active" data-src="" onclick="setSrcFilter(this)">전체</button>
+      <button class="src-tab" data-src="personal" onclick="setSrcFilter(this)">개인일지</button>
+      <button class="src-tab" data-src="session" onclick="setSrcFilter(this)">세션지</button>
+      <button class="src-tab" data-src="planned" onclick="setSrcFilter(this)">예정</button>
+    </div>
+    <div class="session-list" id="session-list"></div>
+  </div>
+
+  <!-- 새 세션 -->
+  <div class="panel" id="panel-add">
+    <div class="form-card">
+      <div class="form-row">
+        <div class="field f-date"><label>날짜</label><input type="date" id="in-date"></div>
+        <div class="field f-memo"><label>메모</label><input type="text" id="in-memo" placeholder="예: 컨디션 보통"></div>
+        <div class="field f-src"><label>출처</label>
+          <select id="in-src">
+            <option value="personal">개인일지</option>
+            <option value="session">세션지</option>
+            <option value="planned">예정</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-hint">
+        <span style="width:16px"></span>
+        <span style="flex:1">운동명</span>
+        <span style="width:80px">무게</span>
+        <span style="width:44px">세트</span>
+        <span style="width:44px">횟수</span>
+      </div>
+      <div class="ex-inputs" id="ex-inputs"></div>
+      <button class="add-ex-btn" onclick="addExRow()">＋ 운동 추가</button>
+      <div class="form-actions">
+        <button class="btn btn-ghost" onclick="clearForm()">초기화</button>
+        <button class="btn btn-primary" onclick="saveSession()">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 추이 분석 -->
+  <div class="panel" id="panel-trend">
+    <div class="trend-controls">
+      <select id="trend-ex" onchange="renderTrend()"><option value="">운동 선택…</option></select>
+    </div>
+    <div id="trend-chart-wrap">
+      <div id="trend-title" style="color:var(--ink3);font-size:.85rem">운동을 선택하면 추이가 표시됩니다.</div>
+      <div id="trend-subtitle"></div>
+      <svg id="trend-svg" style="display:none"></svg>
+      <div class="trend-points-list" id="trend-points"></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="modal-overlay" onclick="maybeCloseModal(event)">
+  <div id="modal">
+    <h2>세션 편집</h2>
+    <div id="modal-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">취소</button>
+      <button class="btn btn-primary" onclick="saveEdit()">저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════
+// 데이터
+// ══════════════════════════════════
+// 데이터는 JSON 불러오기 또는 클라우드 저장소에서 관리됩니다.
+// 코드에는 초기 데이터를 두지 않아, 인터페이스 수정이 데이터에 영향을 주지 않습니다.
+const SEED = [];
+
+// ══════════════════════════════════
+// 상태
+// ══════════════════════════════════
+let DB = [];
+let currentSrcFilter = '';
+let rowCount = 0;
+let editingId = null;
+const STORAGE_KEY = 'workout_db';
+
+// 저장된 데이터 불러오기 (브라우저 localStorage, 없으면 빈 상태)
+async function loadDB(){
+  try {
+    const value = localStorage.getItem(STORAGE_KEY);
+    if(value){
+      DB = JSON.parse(value);
+      return;
+    }
+  } catch(e) {
+    // 키가 없음 → 빈 상태로 시작 (JSON 불러오기로 데이터 주입)
+  }
+  DB = JSON.parse(JSON.stringify(SEED)); // SEED는 빈 배열
+}
+
+// 현재 DB를 브라우저 localStorage에 저장
+async function saveDB(){
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(DB));
+  } catch(e){
+    toast('⚠ 저장 중 오류');
+  }
+}
+
+// ── JSON 불러오기 ──
+function importJSON(){
+  document.getElementById('json-file-input').click();
+}
+
+async function handleJSONFile(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if(!Array.isArray(data)) throw new Error('배열 형식이 아님');
+
+    // 간단한 유효성 검사: 각 항목에 id/date/exercises 가 있는지
+    const valid = data.every(s => s && s.date && Array.isArray(s.exercises));
+    if(!valid) throw new Error('세션 형식 오류');
+
+    // id 없는 항목엔 자동 부여
+    data.forEach(s => { if(!s.id) s.id = uid(); });
+
+    const mode = DB.length>0
+      ? prompt(`현재 ${DB.length}개 세션이 있습니다.\n불러온 ${data.length}개를…\n\n[확인]=교체 / [취소]=추가(병합)`, '교체')
+      : '교체';
+
+    if(mode===null){
+      // 취소 → 병합 (중복 id는 불러온 것으로 덮어씀)
+      const map = {};
+      DB.forEach(s=>map[s.id]=s);
+      data.forEach(s=>map[s.id]=s);
+      DB = Object.values(map);
+      toast(`✓ 병합 완료 (총 ${DB.length}개)`);
+    } else {
+      // 교체
+      DB = data;
+      toast(`✓ ${data.length}개 세션 불러옴`);
+    }
+    await saveDB();
+    renderLog();
+  } catch(e){
+    alert('불러오기 실패: '+e.message);
+  } finally {
+    event.target.value=''; // 같은 파일 재선택 가능하게 초기화
+  }
+}
+
+// ══════════════════════════════════
+// 유틸
+// ══════════════════════════════════
+function uid(){ return 'u'+Date.now()+Math.random().toString(36).slice(2,5); }
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),2000);
+}
+function extractLastNum(str){
+  if(!str) return null;
+  const parts=String(str).split(/[→\-]/);
+  for(let i=parts.length-1;i>=0;i--){
+    const n=parseFloat(parts[i].replace(/[^0-9.]/g,''));
+    if(!isNaN(n)&&n>0) return n;
+  }
+  return null;
+}
+function getExerciseNames(){
+  const counts={};
+  DB.forEach(s=>s.exercises.forEach(e=>{
+    if(e.name&&e.name!=='???') counts[e.name]=(counts[e.name]||0)+1;
+  }));
+  return Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([name,count])=>({name,count}));
+}
+
+// ══════════════════════════════════
+// 탭
+// ══════════════════════════════════
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    t.classList.toggle('active',['log','add','trend'][i]===name);
+  });
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  if(name==='trend') populateTrendSelect();
+}
+
+// ══════════════════════════════════
+// 필터
+// ══════════════════════════════════
+function setSrcFilter(btn){
+  currentSrcFilter = btn.dataset.src;
+  document.querySelectorAll('.src-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderLog();
+}
+
+function renderLog(){
+  const q = document.getElementById('filter-ex').value.trim().toLowerCase();
+  let sessions = [...DB].sort((a,b)=>b.date.localeCompare(a.date));
+  if(currentSrcFilter) sessions = sessions.filter(s=>s.src===currentSrcFilter);
+  if(q) sessions = sessions.filter(s=>s.exercises.some(e=>e.name.toLowerCase().includes(q)));
+
+  document.getElementById('session-count').textContent = sessions.length+'개';
+  const list = document.getElementById('session-list');
+
+  if(!sessions.length){
+    const isEmpty = DB.length===0;
+    if(isEmpty){
+      list.innerHTML=`<div class="empty"><div class="empty-icon">📂</div>데이터가 없습니다.<br><br>
+        <button class="btn btn-primary" onclick="importJSON()" style="margin-top:4px">JSON 불러오기</button>
+        <div style="margin-top:10px;font-size:.7rem">또는 '새 세션' 탭에서 직접 추가하세요.</div></div>`;
+    } else {
+      list.innerHTML=`<div class="empty"><div class="empty-icon">🔍</div>조건에 맞는 세션이 없습니다.</div>`;
+    }
+    return;
+  }
+
+  list.innerHTML = sessions.map(s=>{
+    const isPlanned = s.src==='planned';
+    const badgeCls = s.src==='session'?'src-badge-session':s.src==='planned'?'src-badge-planned':'src-badge-personal';
+    const badgeTxt = s.src==='session'?'세션지':s.src==='planned'?'예정':'개인일지';
+    const preview = [...new Set(s.exercises.map(e=>e.name))].slice(0,3).join(', ')
+      +(s.exercises.length>3?` 외 ${s.exercises.length-3}종`:'');
+    const memoHtml = s.memo?`<span style="margin-left:6px;font-size:.68rem;color:var(--ink3)">${s.memo}</span>`:'';
+
+    const exCards = s.exercises.map((e,i)=>{
+      const chips=[];
+      if(e.weight) chips.push(`<span class="ex-chip">${e.weight}kg</span>`);
+      if(e.sets)   chips.push(`<span class="ex-chip">${e.sets}세트</span>`);
+      if(e.reps)   chips.push(`<span class="ex-chip">${e.reps}회</span>`);
+      return `<div class="ex-card">
+        <span class="ex-num">${i+1}</span>
+        <div class="ex-info">
+          <div class="ex-name">${e.name}</div>
+          ${chips.length?`<div class="ex-chips">${chips.join('')}</div>`:''}
+          ${e.note?`<div class="ex-note">${e.note}</div>`:''}
+        </div>
+      </div>`;
+    }).join('');
+
+    const convertBtn = isPlanned
+      ? `<button class="btn btn-convert" onclick="convertPlanned('${s.id}')">✓ 완료</button>`
+      : '';
+
+    return `<div class="session-card${isPlanned?' planned':''}" id="card-${s.id}">
+      <div class="session-head" onclick="toggleCard('${s.id}')">
+        <div>
+          <div class="session-date">${s.date}${memoHtml}</div>
+          <div class="session-memo">${preview}</div>
+        </div>
+        <div class="session-meta">
+          <span class="session-source ${badgeCls}">${badgeTxt}</span>
+          <span class="session-chevron">▼</span>
+        </div>
+      </div>
+      <div class="session-body">
+        <div class="ex-list">${exCards}</div>
+        <div class="session-foot">
+          <button class="btn btn-danger" onclick="deleteSession('${s.id}')">삭제</button>
+          ${convertBtn}
+          <button class="btn btn-ghost btn-sm" onclick="openEdit('${s.id}')">편집</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleCard(id){
+  document.getElementById('card-'+id).classList.toggle('open');
+}
+let pendingDelete=null;
+async function deleteSession(id){
+  if(pendingDelete===id){
+    // 두 번째 클릭 → 실제 삭제
+    DB=DB.filter(s=>s.id!==id);
+    pendingDelete=null;
+    await saveDB();
+    renderLog();
+    toast('삭제되었습니다.');
+    return;
+  }
+  // 첫 클릭 → 확인 대기
+  pendingDelete=id;
+  const btn=document.querySelector(`#card-${id} .btn-danger`);
+  if(btn){ btn.textContent='한번더!'; btn.style.fontWeight='700'; }
+  toast('다시 누르면 삭제됩니다.');
+  // 4초 내 재클릭 없으면 취소
+  setTimeout(()=>{
+    if(pendingDelete===id){
+      pendingDelete=null;
+      const b=document.querySelector(`#card-${id} .btn-danger`);
+      if(b){ b.textContent='삭제'; b.style.fontWeight=''; }
+    }
+  },4000);
+}
+async function convertPlanned(id){
+  const s=DB.find(x=>x.id===id);
+  if(!s) return;
+  s.src='personal';
+  await saveDB();
+  renderLog();
+  toast('✓ 개인일지로 전환됐어요.');
+}
+
+// ══════════════════════════════════
+// 새 세션 입력
+// ══════════════════════════════════
+function addExRow(data, container){
+  rowCount++;
+  const n=rowCount, d=data||{};
+  const wrap=container||document.getElementById('ex-inputs');
+  const div=document.createElement('div');
+  div.className='ex-input-card'; div.id='exrow-'+n;
+  div.innerHTML=`
+    <div class="ex-input-top">
+      <span class="ex-input-num">${wrap.children.length+1}</span>
+      <div class="autocomplete-wrap">
+        <input type="text" placeholder="운동명" value="${d.name||''}"
+          oninput="onAcInput(this,${n})" onblur="hideAc(${n})" autocomplete="off">
+        <div class="ac-dropdown" id="ac-${n}"></div>
+      </div>
+      <button class="btn btn-danger" onclick="removeExRow(${n})">✕</button>
+    </div>
+    <div class="ex-input-bottom">
+      <div class="ex-input-field ex-input-field-wide">
+        <label>무게</label>
+        <input placeholder="예: 20 또는 16→20" value="${d.weight||''}" onfocus="saveInputFocus(this)" onclick="saveInputFocus(this)" onkeyup="saveInputFocus(this)">
+      </div>
+      <div class="ex-input-field">
+        <label>세트</label>
+        <input placeholder="예: 3" value="${d.sets||''}" onfocus="saveInputFocus(this)" onclick="saveInputFocus(this)" onkeyup="saveInputFocus(this)">
+      </div>
+      <div class="ex-input-field">
+        <label>횟수</label>
+        <input placeholder="예: 12" value="${d.reps||''}" onfocus="saveInputFocus(this)" onclick="saveInputFocus(this)" onkeyup="saveInputFocus(this)">
+      </div>
+      <div class="ex-input-field ex-input-field-wide">
+        <label>메모</label>
+        <input placeholder="예: 한쪽, 보조" value="${d.note||''}" onfocus="saveInputFocus(this)" onclick="saveInputFocus(this)" onkeyup="saveInputFocus(this)">
+      </div>
+    </div>
+    <div class="ex-input-actions">
+      <div class="order-btns">
+        <button class="order-btn" onclick="moveRow(${n},-1)">↑</button>
+        <button class="order-btn" onclick="moveRow(${n},1)">↓</button>
+        <button class="arrow-btn" onmousedown="insertArrowDown(event)">→</button>
+      </div>
+    </div>`;
+  wrap.appendChild(div);
+  renumberRows(wrap);
+}
+
+function renumberRows(wrap){
+  Array.from(wrap.children).forEach((el,i)=>{
+    const el2=el.querySelector('.ex-input-num');
+    if(el2) el2.textContent=i+1;
+  });
+}
+function removeExRow(n){
+  const el=document.getElementById('exrow-'+n);
+  if(!el) return;
+  const wrap=el.parentElement;
+  el.remove();
+  renumberRows(wrap);
+}
+function moveRow(n,dir){
+  const el=document.getElementById('exrow-'+n);
+  if(!el) return;
+  const wrap=el.parentElement;
+  const idx=Array.from(wrap.children).indexOf(el);
+  const tgt=idx+dir;
+  if(tgt<0||tgt>=wrap.children.length) return;
+  if(dir===-1) wrap.insertBefore(el,wrap.children[tgt]);
+  else wrap.insertBefore(wrap.children[tgt],el);
+  renumberRows(wrap);
+}
+let savedInput=null, savedPos=0;
+function saveInputFocus(el){
+  savedInput=el;
+  // 비동기로 실행해 클릭 후 커서가 이동한 뒤 위치를 정확히 읽음
+  requestAnimationFrame(()=>{ savedPos=el.selectionStart??el.value.length; });
+}
+function insertArrowDown(e){
+  e.preventDefault(); // 버튼 클릭으로 포커스 이동 방지
+  if(!savedInput) return;
+  const val=savedInput.value;
+  savedInput.value=val.slice(0,savedPos)+'→'+val.slice(savedPos);
+  savedInput.focus();
+  const newPos=savedPos+1;
+  savedInput.setSelectionRange(newPos,newPos);
+  savedPos=newPos;
+}
+function onAcInput(input,n){
+  const q=input.value.trim().toLowerCase();
+  const dd=document.getElementById('ac-'+n);
+  if(!q){dd.classList.remove('show');return;}
+  const names=getExerciseNames().filter(x=>x.name.toLowerCase().includes(q)).slice(0,8);
+  if(!names.length){dd.classList.remove('show');return;}
+  dd.innerHTML=names.map(x=>`<div class="ac-item" onmousedown="selectAc(${n},'${x.name.replace(/'/g,"\\'")}')">
+    ${x.name}<span class="ac-count">${x.count}회</span></div>`).join('');
+  dd.classList.add('show');
+}
+// 특정 운동의 가장 최근 기록(무게/세트/횟수) 반환
+function getLatestRecord(name){
+  let latest=null, latestDate='';
+  DB.forEach(s=>s.exercises.forEach(e=>{
+    if(e.name===name && (e.weight||e.sets||e.reps)){
+      if(s.date>latestDate){ latestDate=s.date; latest=e; }
+    }
+  }));
+  return latest;
+}
+
+function selectAc(n,name){
+  const row=document.getElementById('exrow-'+n);
+  if(!row) return;
+  row.querySelector('.autocomplete-wrap input').value=name;
+  document.getElementById('ac-'+n).classList.remove('show');
+
+  // 같은 운동의 가장 최근 무게를 자동으로 채움 (무게 칸이 비어 있을 때만)
+  const latest=getLatestRecord(name);
+  if(latest){
+    const inputs=row.querySelectorAll('.ex-input-bottom input');
+    // 순서: [0]무게 [1]세트 [2]횟수 [3]메모
+    if(inputs[0] && !inputs[0].value.trim() && latest.weight){
+      inputs[0].value=latest.weight;
+    }
+    if(inputs[1] && !inputs[1].value.trim() && latest.sets){
+      inputs[1].value=latest.sets;
+    }
+    if(inputs[2] && !inputs[2].value.trim() && latest.reps){
+      inputs[2].value=latest.reps;
+    }
+    toast('최근 기록 자동 입력됨');
+  }
+}
+function hideAc(n){
+  setTimeout(()=>{const dd=document.getElementById('ac-'+n);if(dd)dd.classList.remove('show');},150);
+}
+function clearForm(){
+  document.getElementById('in-date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('in-memo').value='';
+  document.getElementById('in-src').value='personal';
+  const wrap=document.getElementById('ex-inputs');
+  wrap.innerHTML=''; rowCount=0;
+  addExRow();addExRow();addExRow();
+}
+function getExRowData(wrap){
+  return Array.from(wrap.children).map(row=>{
+    const inputs=row.querySelectorAll('input');
+    return {
+      name:inputs[0]?.value.trim()||'',
+      weight:inputs[1]?.value.trim()||'',
+      sets:inputs[2]?.value.trim()||'',
+      reps:inputs[3]?.value.trim()||'',
+      note:inputs[4]?.value.trim()||'',
+    };
+  }).filter(e=>e.name);
+}
+async function saveSession(){
+  const date=document.getElementById('in-date').value;
+  if(!date){alert('날짜를 입력해주세요.');return;}
+  const exercises=getExRowData(document.getElementById('ex-inputs'));
+  if(!exercises.length){alert('운동을 입력해주세요.');return;}
+  DB.push({id:uid(),date,src:document.getElementById('in-src').value,
+    memo:document.getElementById('in-memo').value.trim(),exercises});
+  await saveDB();
+  toast('✓ 저장되었습니다.');
+  clearForm();
+  switchTab('log');
+  renderLog();
+}
+
+// ══════════════════════════════════
+// 편집 모달
+// ══════════════════════════════════
+function openEdit(id){
+  editingId=id;
+  const s=DB.find(x=>x.id===id);
+  if(!s) return;
+  // 내보내기 모달에서 변경됐을 수 있는 제목/액션 복원
+  document.querySelector('#modal h2').textContent='세션 편집';
+  document.querySelector('.modal-actions').style.display='';
+  document.getElementById('modal-body').innerHTML=`
+    <div class="form-row">
+      <div class="field f-date"><label>날짜</label><input type="date" id="edit-date" value="${s.date}"></div>
+      <div class="field f-memo"><label>메모</label><input type="text" id="edit-memo" value="${s.memo||''}"></div>
+      <div class="field f-src"><label>출처</label>
+        <select id="edit-src">
+          <option value="personal" ${s.src==='personal'?'selected':''}>개인일지</option>
+          <option value="session"  ${s.src==='session'?'selected':''}>세션지</option>
+          <option value="planned"  ${s.src==='planned'?'selected':''}>예정</option>
+        </select>
+      </div>
+    </div>
+    <div class="ex-inputs" id="edit-ex-inputs"></div>
+    <button class="add-ex-btn" onclick="addExRow({},document.getElementById('edit-ex-inputs'))">＋ 운동 추가</button>`;
+  const wrap=document.getElementById('edit-ex-inputs');
+  s.exercises.forEach(e=>addExRow(e,wrap));
+  document.getElementById('modal-overlay').classList.add('show');
+}
+async function saveEdit(){
+  const s=DB.find(x=>x.id===editingId);
+  if(!s) return;
+  s.date=document.getElementById('edit-date').value;
+  s.memo=document.getElementById('edit-memo').value.trim();
+  s.src=document.getElementById('edit-src').value;
+  s.exercises=getExRowData(document.getElementById('edit-ex-inputs'));
+  await saveDB();
+  closeModal(); renderLog(); toast('✓ 저장되었습니다.');
+}
+function closeModal(){
+  document.getElementById('modal-overlay').classList.remove('show');
+  editingId=null;
+}
+function maybeCloseModal(e){
+  if(e.target===document.getElementById('modal-overlay')) closeModal();
+}
+
+// ══════════════════════════════════
+// 추이 분석
+// ══════════════════════════════════
+function populateTrendSelect(){
+  const sel=document.getElementById('trend-ex'), cur=sel.value;
+  const names=getExerciseNames().filter(x=>{
+    const recs=DB.flatMap(s=>s.exercises.filter(e=>e.name===x.name));
+    return recs.filter(e=>extractLastNum(e.weight)!==null).length>=2;
+  });
+  sel.innerHTML='<option value="">운동 선택…</option>'+
+    names.map(x=>`<option value="${x.name}" ${x.name===cur?'selected':''}>${x.name} (${x.count}회)</option>`).join('');
+}
+function renderTrend(){
+  const name=document.getElementById('trend-ex').value;
+  const title=document.getElementById('trend-title');
+  const sub=document.getElementById('trend-subtitle');
+  const svg=document.getElementById('trend-svg');
+  const pts=document.getElementById('trend-points');
+  if(!name){
+    title.textContent='운동을 선택하면 추이가 표시됩니다.';
+    title.style.color='var(--ink3)';
+    sub.textContent='';svg.style.display='none';pts.innerHTML='';return;
+  }
+  const records=[];
+  DB.forEach(s=>s.exercises.forEach(e=>{
+    if(e.name===name) records.push({date:s.date,weight:e.weight,wNum:extractLastNum(e.weight),
+      sets:e.sets,reps:e.reps,note:e.note,src:s.src});
+  }));
+  records.sort((a,b)=>a.date.localeCompare(b.date));
+  title.textContent=name; title.style.color='var(--ink)';
+  sub.textContent=`총 ${records.length}회 · ${records[0].date} → ${records[records.length-1].date}`;
+  const chartPts=records.filter(r=>r.wNum!==null);
+  if(chartPts.length>=2){svg.style.display='block';drawChart(chartPts);}
+  else svg.style.display='none';
+  const maxW=Math.max(...records.map(r=>r.wNum||0),1);
+  pts.innerHTML=records.map(r=>{
+    const pct=r.wNum?Math.round((r.wNum/maxW)*100):0;
+    const col=r.src==='planned'?'#997300':r.src==='personal'?'#2d5a3d':'#c8a060';
+    const dot=`<span style="width:7px;height:7px;border-radius:50%;background:${col};flex-shrink:0;display:inline-block"></span>`;
+    const detail=[r.sets&&r.sets+'세트',r.reps&&r.reps+'회',r.note].filter(Boolean).join(' ');
+    return `<div class="tp-row">
+      <span class="tp-date">${r.date.slice(5)}</span>${dot}
+      <div class="tp-bar-wrap"><div class="tp-bar" style="width:${pct}%;background:${col}"></div></div>
+      <span class="tp-val">${r.weight?r.weight+'kg':'—'}</span>
+      <span class="tp-note">${detail}</span>
+    </div>`;
+  }).join('');
+}
+function drawChart(data){
+  const svg=document.getElementById('trend-svg');
+  const W=svg.clientWidth||340,H=170,P={t:16,r:16,b:28,l:32};
+  const iW=W-P.l-P.r,iH=H-P.t-P.b;
+  const vals=data.map(d=>d.wNum);
+  const minV=Math.min(...vals)*.88,maxV=Math.max(...vals)*1.06;
+  const xs=i=>P.l+(data.length===1?iW/2:i/(data.length-1)*iW);
+  const ys=v=>P.t+iH-((v-minV)/(maxV-minV))*iH;
+  const path=data.map((d,i)=>(i===0?'M':'L')+xs(i)+','+ys(d.wNum)).join(' ');
+  const area=path+` L${xs(data.length-1)},${P.t+iH} L${xs(0)},${P.t+iH} Z`;
+  const circles=data.map((d,i)=>{
+    const col=d.src==='planned'?'#997300':d.src==='personal'?'#2d5a3d':'#c8a060';
+    return `<circle cx="${xs(i)}" cy="${ys(d.wNum)}" r="3.5" fill="${col}" stroke="#fff" stroke-width="1.5"/>
+      <text x="${xs(i)}" y="${ys(d.wNum)-9}" text-anchor="middle" font-size="8.5" font-family="IBM Plex Mono,monospace" fill="#4a4a46">${d.wNum}</text>`;
+  }).join('');
+  const xLabels=data.map((d,i)=>
+    `<text x="${xs(i)}" y="${H-2}" text-anchor="middle" font-size="8" font-family="IBM Plex Mono,monospace" fill="#8a8a84">${d.date.slice(5)}</text>`
+  ).join('');
+  svg.innerHTML=`<defs><linearGradient id="tg" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#2d5a3d" stop-opacity=".18"/>
+    <stop offset="100%" stop-color="#2d5a3d" stop-opacity=".02"/>
+  </linearGradient></defs>
+  <line x1="${P.l}" y1="${P.t}" x2="${P.l}" y2="${P.t+iH}" stroke="#ddd8ce" stroke-width="1"/>
+  <line x1="${P.l}" y1="${P.t+iH}" x2="${P.l+iW}" y2="${P.t+iH}" stroke="#ddd8ce" stroke-width="1"/>
+  <path d="${area}" fill="url(#tg)"/>
+  <path d="${path}" fill="none" stroke="#2d5a3d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  ${circles}${xLabels}
+  <text x="${P.l-4}" y="${P.t+5}" text-anchor="end" font-size="8" font-family="IBM Plex Mono,monospace" fill="#8a8a84">${Math.round(maxV)}</text>
+  <text x="${P.l-4}" y="${P.t+iH+3}" text-anchor="end" font-size="8" font-family="IBM Plex Mono,monospace" fill="#8a8a84">${Math.round(minV)}</text>`;
+}
+
+// ══════════════════════════════════
+// 내보내기
+// ══════════════════════════════════
+// 다운로드 시도 + 실패 시 텍스트 표시 폴백
+function downloadOrShow(filename, content, mime){
+  try {
+    const blob=new Blob([content],{type:mime});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    // 다운로드가 샌드박스에서 막힐 수 있으니, 복사용 모달도 함께 제공
+    showCopyModal(filename, content);
+  } catch(e){
+    showCopyModal(filename, content);
+  }
+}
+
+// 내용을 복사할 수 있는 모달 표시
+function showCopyModal(filename, content){
+  document.getElementById('modal-body').innerHTML=`
+    <p style="font-size:.8rem;color:var(--ink2);margin-bottom:10px">
+      <strong>${filename}</strong><br>
+      아래 내용을 길게 눌러 전체 선택 → 복사한 뒤 메모앱이나 파일로 저장하세요.
+      (다운로드가 됐다면 무시해도 됩니다.)
+    </p>
+    <textarea id="export-text" readonly style="width:100%;height:300px;font-family:var(--mono);font-size:.7rem;padding:10px;border:1px solid var(--rule);border-radius:8px;background:#fff;color:var(--ink);resize:vertical">${content.replace(/</g,'&lt;')}</textarea>
+    <button class="btn btn-primary" style="margin-top:10px;width:100%" onclick="copyExportText()">전체 복사</button>
+  `;
+  document.querySelector('#modal h2').textContent='내보내기';
+  document.querySelector('.modal-actions').style.display='none';
+  document.getElementById('modal-overlay').classList.add('show');
+}
+function copyExportText(){
+  const ta=document.getElementById('export-text');
+  ta.select();
+  try {
+    navigator.clipboard.writeText(ta.value).then(
+      ()=>toast('✓ 복사됨'),
+      ()=>{ document.execCommand('copy'); toast('✓ 복사됨'); }
+    );
+  } catch(e){
+    try{ document.execCommand('copy'); toast('✓ 복사됨'); }catch(_){ toast('직접 선택해 복사하세요'); }
+  }
+}
+
+function exportJSON(){
+  const content=JSON.stringify(DB,null,2);
+  const filename='운동일지_'+new Date().toISOString().slice(0,10)+'.json';
+  downloadOrShow(filename, content, 'application/json');
+}
+function exportCSV(){
+  const rows=[['날짜','출처','메모','운동명','무게','세트','횟수','운동메모']];
+  [...DB].sort((a,b)=>a.date.localeCompare(b.date)).forEach(s=>
+    s.exercises.forEach(e=>rows.push([
+      s.date,
+      s.src==='personal'?'개인일지':s.src==='planned'?'예정':'세션지',
+      s.memo||'',e.name,e.weight||'',e.sets||'',e.reps||'',e.note||'',
+    ]))
+  );
+  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const filename='운동일지_'+new Date().toISOString().slice(0,10)+'.csv';
+  downloadOrShow(filename, '\uFEFF'+csv, 'text/csv;charset=utf-8');
+}
+
+// ══════════════════════════════════
+// 초기화
+// ══════════════════════════════════
+document.addEventListener('DOMContentLoaded', async ()=>{
+  // 검색 입력 이벤트 연결
+  document.getElementById('filter-ex').addEventListener('input', renderLog);
+  clearForm();
+
+  // 로딩 표시
+  document.getElementById('session-list').innerHTML =
+    `<div class="empty"><div class="empty-icon">⏳</div>불러오는 중…</div>`;
+
+  await loadDB();
+  renderLog();
+});
+</script>
+</body>
+</html>
