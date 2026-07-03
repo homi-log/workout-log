@@ -18,6 +18,8 @@
 
 ## 배포 (GitHub Pages)
 
-이 저장소를 GitHub에 올리고 Settings → Pages에서 브랜치를 `main` / 루트로 지정하면
-`https://<사용자명>.github.io/<저장소명>/` 주소로 휴대폰에서 접속할 수 있습니다.
-코드 수정 → commit → push 시 자동으로 재배포됩니다.
+**라이브 주소:** https://homi-log.github.io/workout-log/
+
+저장소: https://github.com/homi-log/workout-log (main 브랜치 / 루트)
+
+코드 수정 → commit → push 하면 1~2분 내 자동으로 재배포됩니다.
