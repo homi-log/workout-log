@@ -260,6 +260,8 @@ let DB = [];
 let currentSrcFilter = '';
 let rowCount = 0;
 let editingId = null;
+let dbDirty = false; // 페이지 로드 후 사용자가 데이터를 수정했는지 (백그라운드 동기화가 덮어쓰지 않게)
+const PENDING_PUSH_KEY = 'workout_pending_push'; // 클라우드로 아직 못 올린 변경이 있는지
 const STORAGE_KEY = 'workout_db';
 const CLOUD_URL_KEY = 'workout_cloud_url'; // Apps Script 웹앱 URL (기기별 localStorage, 코드/저장소엔 미포함)
 
@@ -339,44 +341,60 @@ function updateSyncBtn(){
   b.title = on ? 'Google 시트 동기화: 연결됨' : 'Google 시트 클라우드 동기화 설정';
 }
 
-// 데이터 불러오기: 클라우드 우선, 실패/미설정 시 로컬 캐시
-async function loadDB(){
-  const url = getCloudUrl();
-  if(url){
-    try {
-      const data = await cloudLoad(url);
-      if(data){
-        DB = data;
-        normalizeDB();
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(DB)); } catch(e){}
-        return;
-      }
-    } catch(e){
-      toast('⚠ 클라우드 연결 실패 — 로컬 데이터 사용');
-    }
-  }
+// 로컬 캐시에서 즉시 불러오기 (네트워크 없음). 캐시 존재 여부 반환.
+function loadLocal(){
   try {
     const value = localStorage.getItem(STORAGE_KEY);
     if(value){
       DB = JSON.parse(value);
       normalizeDB();
-      return;
+      return true;
     }
   } catch(e) {
-    // 키가 없음 → 빈 상태로 시작 (JSON 불러오기로 데이터 주입)
+    // 키가 없거나 손상 → 빈 상태
   }
   DB = JSON.parse(JSON.stringify(SEED)); // SEED는 빈 배열
+  return false;
+}
+
+// 백그라운드 클라우드 동기화 (로컬을 먼저 그린 뒤 호출). UI를 막지 않음.
+async function backgroundSync(){
+  const url = getCloudUrl();
+  if(!url) return;
+  // 아직 클라우드로 못 올린 로컬 변경이 있으면(오프라인 저장 등) → 밀어올리기 우선(덮어쓰기 방지)
+  if(localStorage.getItem(PENDING_PUSH_KEY)==='1'){
+    try { await cloudSave(DB); localStorage.removeItem(PENDING_PUSH_KEY); } catch(e){}
+    return;
+  }
+  // 그 외엔 클라우드 최신본을 받아 반영
+  dbDirty = false;
+  try {
+    const data = await cloudLoad(url);
+    if(data && !dbDirty){ // 동기화 도중 사용자가 저장했으면 덮어쓰지 않음
+      DB = data;
+      normalizeDB();
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(DB)); } catch(e){}
+      renderLog();
+      if(document.getElementById('panel-trend')?.classList.contains('active')) populateTrendSelect();
+    }
+  } catch(e){
+    // 로컬 데이터가 이미 표시됨 → 조용히 무시
+  }
 }
 
 // 저장: 로컬 캐시(즉시) + 클라우드(백그라운드 — UI를 막지 않음)
 function saveDB(){
+  dbDirty = true;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(DB));
   } catch(e){
     toast('⚠ 저장 중 오류');
   }
   if(getCloudUrl()){
-    cloudSave(DB).catch(()=>toast('⚠ 클라우드 저장 실패 (로컬엔 저장됨)'));
+    localStorage.setItem(PENDING_PUSH_KEY,'1');
+    cloudSave(DB)
+      .then(()=>localStorage.removeItem(PENDING_PUSH_KEY))
+      .catch(()=>toast('⚠ 클라우드 저장 실패 (로컬엔 저장됨)'));
   }
 }
 
@@ -990,12 +1008,12 @@ async function saveSyncSettings(){
   const localN=DB.length, cloudN=cloudData.length;
   if(cloudN>0 && localN>0){
     const useCloud=confirm(`클라우드에 세션 ${cloudN}개, 이 기기에 ${localN}개가 있습니다.\n\n[확인] = 클라우드 내용을 이 기기로 가져오기\n[취소] = 이 기기 내용을 클라우드로 올리기`);
-    if(useCloud){ DB=cloudData; normalizeDB(); localStorage.setItem(STORAGE_KEY,JSON.stringify(DB)); }
-    else { await saveDB(); }
+    if(useCloud){ DB=cloudData; normalizeDB(); dbDirty=false; localStorage.removeItem(PENDING_PUSH_KEY); localStorage.setItem(STORAGE_KEY,JSON.stringify(DB)); }
+    else { saveDB(); }
   } else if(cloudN>0){
-    DB=cloudData; normalizeDB(); localStorage.setItem(STORAGE_KEY,JSON.stringify(DB));
+    DB=cloudData; normalizeDB(); dbDirty=false; localStorage.removeItem(PENDING_PUSH_KEY); localStorage.setItem(STORAGE_KEY,JSON.stringify(DB));
   } else if(localN>0){
-    await saveDB();
+    saveDB();
   }
   updateSyncBtn(); closeModal(); renderLog(); populateTrendSelect();
   toast('✓ 클라우드 동기화 연결됨');
@@ -1005,7 +1023,8 @@ async function pullFromCloud(){
   syncStatus('불러오는 중…');
   try {
     const data=await cloudLoad();
-    DB=data; normalizeDB(); localStorage.setItem(STORAGE_KEY,JSON.stringify(DB));
+    DB=data; normalizeDB(); dbDirty=false; localStorage.removeItem(PENDING_PUSH_KEY);
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(DB));
     closeModal(); renderLog(); populateTrendSelect();
     toast('✓ 클라우드에서 '+data.length+'개 불러옴');
   } catch(e){
@@ -1046,18 +1065,24 @@ function exportCSV(){
 // ══════════════════════════════════
 // 초기화
 // ══════════════════════════════════
-document.addEventListener('DOMContentLoaded', async ()=>{
+document.addEventListener('DOMContentLoaded', ()=>{
   // 검색 입력 이벤트 연결
   document.getElementById('filter-ex').addEventListener('input', renderLog);
   clearForm();
   updateSyncBtn();
 
-  // 로딩 표시
-  document.getElementById('session-list').innerHTML =
-    `<div class="empty"><div class="empty-icon">⏳</div>불러오는 중…</div>`;
+  // 1) 로컬 캐시를 즉시 표시 (스피너 없이 바로 렌더)
+  const hadCache = loadLocal();
+  if(!hadCache && getCloudUrl()){
+    // 캐시가 없고 클라우드 연결됨 → 첫 동기화 동안만 잠깐 표시
+    document.getElementById('session-list').innerHTML =
+      `<div class="empty"><div class="empty-icon">⏳</div>불러오는 중…</div>`;
+  } else {
+    renderLog();
+  }
 
-  await loadDB();
-  renderLog();
+  // 2) 백그라운드에서 클라우드와 동기화 (도착하면 자동 갱신)
+  backgroundSync();
 });
 </script>
 </body>
