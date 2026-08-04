@@ -477,7 +477,17 @@ function extractLastNum(str){
   if(!str) return null;
   const parts=String(str).split(/[→\-]/);
   for(let i=parts.length-1;i>=0;i--){
-    const n=parseFloat(parts[i].replace(/[^0-9.]/g,''));
+    const seg=parts[i];
+    if(seg.includes('+')){
+      // 원판 합산 표기 지원: "20+2.5+2.5kg" → 25
+      const sum=seg.split('+').reduce((acc,tok)=>{
+        const n=parseFloat(tok.replace(/[^0-9.]/g,''));
+        return isNaN(n)?acc:acc+n;
+      },0);
+      if(sum>0) return sum;
+      continue;
+    }
+    const n=parseFloat(seg.replace(/[^0-9.]/g,''));
     if(!isNaN(n)&&n>0) return n;
   }
   return null;
