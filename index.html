@@ -85,6 +85,12 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:3
 
 /* 폼 */
 .form-card{background:var(--paper);border:1px solid var(--rule);border-radius:12px;padding:20px 16px;margin-bottom:20px}
+.unit-bar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--rule)}
+.unit-bar-label{font-family:var(--mono);font-size:.62rem;letter-spacing:.05em;color:var(--ink3);text-transform:uppercase}
+.unit-toggle{display:flex;border:1px solid var(--rule);border-radius:20px;overflow:hidden}
+.unit-opt{font-family:var(--mono);font-size:.68rem;padding:4px 12px;border:none;background:#fff;color:var(--ink3);cursor:pointer}
+.unit-opt.active{background:var(--accent);color:#fff}
+.unit-bar-hint{font-size:.65rem;color:var(--ink3);flex-basis:100%;line-height:1.4}
 .form-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
 .field{display:flex;flex-direction:column;gap:4px}
 .field label{font-family:var(--mono);font-size:.62rem;letter-spacing:.07em;color:var(--ink3);text-transform:uppercase}
@@ -199,6 +205,14 @@ svg#trend-svg{width:100%;height:180px;overflow:visible}
   <!-- 새 세션 -->
   <div class="panel" id="panel-add">
     <div class="form-card">
+      <div class="unit-bar">
+        <span class="unit-bar-label">기본 무게 단위</span>
+        <div class="unit-toggle">
+          <button type="button" class="unit-opt" data-unit="kg" onclick="setDefaultUnit('kg')">kg</button>
+          <button type="button" class="unit-opt" data-unit="lbs" onclick="setDefaultUnit('lbs')">lbs</button>
+        </div>
+        <span class="unit-bar-hint">단위 없이 입력하면 이 단위로 저장. 다른 단위는 숫자 뒤에 kg/lb를 직접 적으세요.</span>
+      </div>
       <div class="form-row">
         <div class="field f-date"><label>날짜</label><input type="date" id="in-date"></div>
         <div class="field f-memo"><label>메모</label><input type="text" id="in-memo" placeholder="예: 컨디션 보통"></div>
@@ -274,13 +288,19 @@ function exRows(e){
   if(e.weight||e.sets||e.reps) return [{weight:e.weight||'',sets:e.sets||'',reps:e.reps||''}];
   return [];
 }
+// 단위가 없는 과거 데이터는 항상 kg로 표시돼왔으므로, 마이그레이션 시 kg로 명시 확정합니다.
+// (새로 입력되는 값은 저장 시점(getExRowData)에 이미 단위가 찍혀서 들어오므로 여기선 건드리지 않음)
+function stampLegacyWeight(w){
+  if(!w) return w;
+  return weightHasUnit(w) ? w : (w+'kg');
+}
 function normalizeExercise(e){
   if(!e || typeof e!=='object') return {name:'',note:'',rows:[]};
   let rows;
   if(Array.isArray(e.rows)){
-    rows = e.rows.map(r=>({ weight:String(r.weight??''), sets:String(r.sets??''), reps:String(r.reps??'') }));
+    rows = e.rows.map(r=>({ weight:stampLegacyWeight(String(r.weight??'')), sets:String(r.sets??''), reps:String(r.reps??'') }));
   } else if(e.weight||e.sets||e.reps){
-    rows = [{ weight:String(e.weight||''), sets:String(e.sets||''), reps:String(e.reps||'') }];
+    rows = [{ weight:stampLegacyWeight(String(e.weight||'')), sets:String(e.sets||''), reps:String(e.reps||'') }];
   } else {
     rows = [];
   }
@@ -289,10 +309,10 @@ function normalizeExercise(e){
 function normalizeDB(){
   DB.forEach(s=>{ if(Array.isArray(s.exercises)) s.exercises = s.exercises.map(normalizeExercise); });
 }
-// 한 운동에서 가장 무거운 세트의 무게(숫자) — 추이 분석용
+// 한 운동에서 가장 무거운 세트의 무게(kg 환산) — 추이 분석용
 function exMaxWeight(e){
   let max=null;
-  exRows(e).forEach(r=>{ const n=extractLastNum(r.weight); if(n!==null && (max===null||n>max)) max=n; });
+  exRows(e).forEach(r=>{ const n=weightToKg(r.weight); if(n!==null && (max===null||n>max)) max=n; });
   return max;
 }
 
@@ -462,6 +482,41 @@ function extractLastNum(str){
   }
   return null;
 }
+
+// ── 무게 단위 (kg/lbs 혼용 지원) ──
+const UNIT_KEY = 'workout_unit'; // 기본 단위(기기별 설정)
+const LB_TO_KG = 0.45359237;
+function getUnit(){ return localStorage.getItem(UNIT_KEY)==='lbs' ? 'lbs' : 'kg'; }
+// 무게 문자열에 단위가 이미 적혀 있는지
+function weightHasUnit(str){ return /kg|lb|파운드|킬로|키로/i.test(String(str)); }
+// 이 무게 값의 단위 (적혀 있으면 그것, 없으면 기본 단위)
+function weightUnit(str){
+  const s=String(str);
+  if(/lb|파운드/i.test(s)) return 'lbs';
+  if(/kg|킬로|키로/i.test(s)) return 'kg';
+  return getUnit();
+}
+// 화면 표시용: 단위가 없으면 기본 단위를 붙여서 반환
+function displayWeight(w){
+  if(!w) return '';
+  return weightHasUnit(w) ? String(w) : (String(w)+getUnit());
+}
+// 비교·추이용: kg 숫자로 환산 (lbs면 변환)
+function weightToKg(str){
+  const n=extractLastNum(str);
+  if(n===null) return null;
+  return weightUnit(str)==='lbs' ? n*LB_TO_KG : n;
+}
+function setDefaultUnit(u){
+  localStorage.setItem(UNIT_KEY, u==='lbs'?'lbs':'kg');
+  updateUnitToggle();
+  renderLog();
+  if(document.getElementById('panel-trend')?.classList.contains('active')) renderTrend();
+}
+function updateUnitToggle(){
+  const cur=getUnit();
+  document.querySelectorAll('.unit-opt').forEach(b=>b.classList.toggle('active', b.dataset.unit===cur));
+}
 function getExerciseNames(){
   const counts={};
   DB.forEach(s=>s.exercises.forEach(e=>{
@@ -524,7 +579,7 @@ function renderLog(){
     const exCards = s.exercises.map((e,i)=>{
       const rowsHtml = exRows(e).map(r=>{
         const chips=[];
-        if(r.weight) chips.push(`<span class="ex-chip">${r.weight}kg</span>`);
+        if(r.weight) chips.push(`<span class="ex-chip">${displayWeight(r.weight)}</span>`);
         if(r.sets)   chips.push(`<span class="ex-chip">${r.sets}세트</span>`);
         if(r.reps)   chips.push(`<span class="ex-chip">${r.reps}회</span>`);
         return chips.length?`<div class="ex-chips">${chips.join('')}</div>`:'';
@@ -652,7 +707,7 @@ function addSetRow(exN, d){
   const div=document.createElement('div');
   div.className='set-row';
   div.innerHTML=`
-    <input class="w" placeholder="예: 20" value="${escAttr(d.weight)}">
+    <input class="w" placeholder="예: 20, 45lb" value="${escAttr(d.weight)}">
     <input class="s" placeholder="예: 3" value="${escAttr(d.sets)}">
     <input class="r" placeholder="예: 12" value="${escAttr(d.reps)}">
     <button type="button" class="set-del" onclick="removeSetRow(this)" title="이 행 삭제">✕</button>`;
@@ -744,11 +799,15 @@ function getExRowData(wrap){
   return Array.from(wrap.children).map(card=>{
     const name=card.querySelector('.autocomplete-wrap input')?.value.trim()||'';
     const note=card.querySelector('.ex-memo input')?.value.trim()||'';
-    const rows=Array.from(card.querySelectorAll('.set-row')).map(r=>({
-      weight:r.querySelector('.w')?.value.trim()||'',
-      sets:r.querySelector('.s')?.value.trim()||'',
-      reps:r.querySelector('.r')?.value.trim()||'',
-    })).filter(x=>x.weight||x.sets||x.reps);
+    const rows=Array.from(card.querySelectorAll('.set-row')).map(r=>{
+      const w=r.querySelector('.w')?.value.trim()||'';
+      return {
+        // 단위를 안 적었으면 저장 시점의 기본 단위를 확정해 찍음 (기기 간 동기화돼도 해석이 안 바뀌게)
+        weight: w && !weightHasUnit(w) ? w+getUnit() : w,
+        sets:r.querySelector('.s')?.value.trim()||'',
+        reps:r.querySelector('.r')?.value.trim()||'',
+      };
+    }).filter(x=>x.weight||x.sets||x.reps);
     return {name,note,rows};
   }).filter(e=>e.name);
 }
@@ -867,7 +926,7 @@ function renderTrend(){
     return `<div class="tp-row">
       <span class="tp-date">${r.date.slice(5)}</span>${dot}
       <div class="tp-bar-wrap"><div class="tp-bar" style="width:${pct}%;background:${col}"></div></div>
-      <span class="tp-val">${r.weight?r.weight+'kg':'—'}</span>
+      <span class="tp-val">${r.weight?displayWeight(r.weight):'—'}</span>
       <span class="tp-note">${detail}</span>
     </div>`;
   }).join('');
@@ -900,7 +959,8 @@ function drawChart(data){
   <path d="${path}" fill="none" stroke="#2d5a3d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
   ${circles}${xLabels}
   <text x="${P.l-4}" y="${P.t+5}" text-anchor="end" font-size="8" font-family="IBM Plex Mono,monospace" fill="#8a8a84">${Math.round(maxV)}</text>
-  <text x="${P.l-4}" y="${P.t+iH+3}" text-anchor="end" font-size="8" font-family="IBM Plex Mono,monospace" fill="#8a8a84">${Math.round(minV)}</text>`;
+  <text x="${P.l-4}" y="${P.t+iH+3}" text-anchor="end" font-size="8" font-family="IBM Plex Mono,monospace" fill="#8a8a84">${Math.round(minV)}</text>
+  <text x="${P.l}" y="${P.t-5}" font-size="7.5" font-family="IBM Plex Mono,monospace" fill="#8a8a84">kg</text>`;
 }
 
 // ══════════════════════════════════
@@ -1053,7 +1113,7 @@ function exportCSV(){
       if(!ers.length){
         rows.push([s.date,srcLbl,s.memo||'',e.name,'','','',e.note||'']);
       } else {
-        ers.forEach(r=>rows.push([s.date,srcLbl,s.memo||'',e.name,r.weight||'',r.sets||'',r.reps||'',e.note||'']));
+        ers.forEach(r=>rows.push([s.date,srcLbl,s.memo||'',e.name,r.weight?displayWeight(r.weight):'',r.sets||'',r.reps||'',e.note||'']));
       }
     })
   );
@@ -1070,6 +1130,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('filter-ex').addEventListener('input', renderLog);
   clearForm();
   updateSyncBtn();
+  updateUnitToggle();
 
   // 1) 로컬 캐시를 즉시 표시 (스피너 없이 바로 렌더)
   const hadCache = loadLocal();
