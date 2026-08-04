@@ -61,6 +61,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:3
 .session-date{font-family:var(--mono);font-size:.85rem;font-weight:500;color:var(--accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .session-card.planned .session-date{color:var(--plan)}
 .session-memo{font-size:.7rem;color:var(--ink3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.session-memo-hint{margin-left:6px;font-size:.68rem;color:var(--ink3)}
 .session-meta{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .session-source{font-family:var(--mono);font-size:.6rem;padding:2px 7px;border-radius:10px;border:1px solid var(--rule);white-space:nowrap;flex-shrink:0}
 .src-badge-session{background:#fff8ee;color:#8b4513;border-color:#ddd0b8}
@@ -80,7 +81,8 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:3
 .ex-name{font-size:.85rem;font-weight:500}
 .ex-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
 .ex-chip{font-family:var(--mono);font-size:.65rem;color:var(--ink2);background:var(--paper);border:1px solid var(--rule);border-radius:4px;padding:1px 6px}
-.ex-note{font-size:.65rem;color:var(--ink3);margin-top:3px;line-height:1.4}
+.ex-note{font-size:.65rem;color:var(--ink3);margin-top:3px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
+.session-memo-full{font-size:.75rem;color:var(--ink2);background:var(--bg);border-radius:8px;padding:9px 11px;margin-bottom:10px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
 .session-foot{display:flex;justify-content:flex-end;gap:6px;padding-top:8px;border-top:1px solid var(--rule)}
 
 /* 폼 */
@@ -94,8 +96,9 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:3
 .form-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
 .field{display:flex;flex-direction:column;gap:4px}
 .field label{font-family:var(--mono);font-size:.62rem;letter-spacing:.07em;color:var(--ink3);text-transform:uppercase}
-.field input,.field select{font-family:var(--sans);font-size:.85rem;padding:9px 11px;border:1px solid var(--rule);border-radius:6px;background:#fff;color:var(--ink);outline:none;-webkit-appearance:none}
-.field input:focus,.field select:focus{border-color:var(--accent)}
+.field input,.field select,.field textarea{font-family:var(--sans);font-size:.85rem;padding:9px 11px;border:1px solid var(--rule);border-radius:6px;background:#fff;color:var(--ink);outline:none;-webkit-appearance:none}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent)}
+.field textarea{resize:none;overflow:hidden;line-height:1.4;font-family:var(--sans)}
 .f-date input{width:150px;font-family:var(--mono)}.f-memo{flex:1;min-width:140px}.f-src select{width:100px}
 .ex-inputs{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
 .ex-input-card{background:var(--bg);border:1px solid var(--rule);border-radius:10px;padding:10px 12px}
@@ -112,8 +115,9 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:3
 .ac-count{font-family:var(--mono);font-size:.62rem;color:var(--ink3);float:right}
 .ex-input-field{display:flex;flex-direction:column;gap:3px}
 .ex-input-field label{font-family:var(--mono);font-size:.58rem;letter-spacing:.06em;color:var(--ink3);text-transform:uppercase}
-.ex-input-field input{font-family:var(--mono);font-size:.82rem;padding:8px 10px;border:1px solid var(--rule);border-radius:6px;background:#fff;color:var(--ink);outline:none;width:100%}
-.ex-input-field input:focus{border-color:var(--accent)}
+.ex-input-field input,.ex-input-field textarea{font-family:var(--mono);font-size:.82rem;padding:8px 10px;border:1px solid var(--rule);border-radius:6px;background:#fff;color:var(--ink);outline:none;width:100%}
+.ex-input-field input:focus,.ex-input-field textarea:focus{border-color:var(--accent)}
+.ex-input-field textarea{resize:none;overflow:hidden;line-height:1.4;font-family:var(--sans);min-height:34px}
 /* 무게·세트·횟수 세트행 (헤더와 동일 그리드로 정렬 보장) */
 .set-header,.set-row{display:grid;grid-template-columns:1fr 1fr 1fr 26px;gap:6px;align-items:center}
 .set-header{margin:8px 0 2px}
@@ -215,7 +219,7 @@ svg#trend-svg{width:100%;height:180px;overflow:visible}
       </div>
       <div class="form-row">
         <div class="field f-date"><label>날짜</label><input type="date" id="in-date"></div>
-        <div class="field f-memo"><label>메모</label><input type="text" id="in-memo" placeholder="예: 컨디션 보통"></div>
+        <div class="field f-memo"><label>메모</label><textarea id="in-memo" placeholder="예: 컨디션 보통" rows="1" oninput="autoGrow(this)"></textarea></div>
         <div class="field f-src"><label>출처</label>
           <select id="in-src">
             <option value="personal">개인일지</option>
@@ -584,7 +588,10 @@ function renderLog(){
     const badgeTxt = s.src==='session'?'세션지':s.src==='planned'?'예정':'개인일지';
     const preview = [...new Set(s.exercises.map(e=>e.name))].slice(0,3).join(', ')
       +(s.exercises.length>3?` 외 ${s.exercises.length-3}종`:'');
-    const memoHtml = s.memo?`<span style="margin-left:6px;font-size:.68rem;color:var(--ink3)">${s.memo}</span>`:'';
+    // 헤더엔 첫 줄만 짧게 미리보기 (전체 메모는 펼쳤을 때 아래 본문에 표시)
+    const memoFirstLine = s.memo ? escHtml(s.memo.split('\n')[0]) : '';
+    const memoHtml = memoFirstLine?`<span class="session-memo-hint">${memoFirstLine}</span>`:'';
+    const sessionMemoBlock = s.memo ? `<div class="session-memo-full">${escHtml(s.memo)}</div>` : '';
 
     const exCards = s.exercises.map((e,i)=>{
       const rowsHtml = exRows(e).map(r=>{
@@ -597,9 +604,9 @@ function renderLog(){
       return `<div class="ex-card">
         <span class="ex-num">${i+1}</span>
         <div class="ex-info">
-          <div class="ex-name">${e.name}</div>
+          <div class="ex-name">${escHtml(e.name)}</div>
           ${rowsHtml}
-          ${e.note?`<div class="ex-note">${e.note}</div>`:''}
+          ${e.note?`<div class="ex-note">${escHtml(e.note)}</div>`:''}
         </div>
       </div>`;
     }).join('');
@@ -620,6 +627,7 @@ function renderLog(){
         </div>
       </div>
       <div class="session-body">
+        ${sessionMemoBlock}
         <div class="ex-list">${exCards}</div>
         <div class="session-foot">
           <button class="btn btn-danger" onclick="deleteSession('${s.id}')">삭제</button>
@@ -672,6 +680,10 @@ async function convertPlanned(id){
 // 새 세션 입력
 // ══════════════════════════════════
 function escAttr(v){ return String(v==null?'':v).replace(/"/g,'&quot;'); }
+// HTML 텍스트로 안전하게 표시(자유입력 필드용). 줄바꿈은 CSS white-space:pre-wrap이 그대로 살립니다.
+function escHtml(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+// 메모 textarea 자동 높이 조절
+function autoGrow(el){ el.style.height='auto'; el.style.height=(el.scrollHeight+2)+'px'; }
 
 function addExRow(data, container){
   rowCount++;
@@ -694,7 +706,7 @@ function addExRow(data, container){
     <button type="button" class="add-set-btn" onclick="addSetRow(${n})">＋ 세트 행</button>
     <div class="ex-input-field ex-memo">
       <label>메모</label>
-      <input placeholder="예: 한쪽, 보조" value="${escAttr(d.note)}">
+      <textarea placeholder="예: 한쪽, 보조" rows="1" oninput="autoGrow(this)">${escHtml(d.note)}</textarea>
     </div>
     <div class="ex-input-actions">
       <div class="order-btns">
@@ -799,7 +811,8 @@ function hideAc(n){
 }
 function clearForm(){
   document.getElementById('in-date').value=new Date().toISOString().slice(0,10);
-  document.getElementById('in-memo').value='';
+  const memoEl=document.getElementById('in-memo');
+  memoEl.value=''; memoEl.style.height='';
   document.getElementById('in-src').value='personal';
   const wrap=document.getElementById('ex-inputs');
   wrap.innerHTML=''; rowCount=0;
@@ -808,7 +821,7 @@ function clearForm(){
 function getExRowData(wrap){
   return Array.from(wrap.children).map(card=>{
     const name=card.querySelector('.autocomplete-wrap input')?.value.trim()||'';
-    const note=card.querySelector('.ex-memo input')?.value.trim()||'';
+    const note=card.querySelector('.ex-memo textarea')?.value.trim()||'';
     const rows=Array.from(card.querySelectorAll('.set-row')).map(r=>{
       const w=r.querySelector('.w')?.value.trim()||'';
       return {
@@ -855,7 +868,7 @@ function openEdit(id){
   document.getElementById('modal-body').innerHTML=`
     <div class="form-row">
       <div class="field f-date"><label>날짜</label><input type="date" id="edit-date" value="${s.date}"></div>
-      <div class="field f-memo"><label>메모</label><input type="text" id="edit-memo" value="${s.memo||''}"></div>
+      <div class="field f-memo"><label>메모</label><textarea id="edit-memo" rows="1" oninput="autoGrow(this)">${escHtml(s.memo||'')}</textarea></div>
       <div class="field f-src"><label>출처</label>
         <select id="edit-src">
           <option value="personal" ${s.src==='personal'?'selected':''}>개인일지</option>
@@ -869,6 +882,8 @@ function openEdit(id){
   const wrap=document.getElementById('edit-ex-inputs');
   s.exercises.forEach(e=>addExRow(e,wrap));
   document.getElementById('modal-overlay').classList.add('show');
+  autoGrow(document.getElementById('edit-memo'));
+  wrap.querySelectorAll('.ex-memo textarea').forEach(autoGrow);
 }
 async function saveEdit(){
   const s=DB.find(x=>x.id===editingId);
@@ -932,7 +947,8 @@ function renderTrend(){
     const pct=r.wNum?Math.round((r.wNum/maxW)*100):0;
     const col=r.src==='planned'?'#997300':r.src==='personal'?'#2d5a3d':'#c8a060';
     const dot=`<span style="width:7px;height:7px;border-radius:50%;background:${col};flex-shrink:0;display:inline-block"></span>`;
-    const detail=[r.sets&&r.sets+'세트',r.reps&&r.reps+'회',r.note].filter(Boolean).join(' ');
+    const noteFlat=r.note?escHtml(r.note).replace(/\n+/g,' '):'';
+    const detail=[r.sets&&r.sets+'세트',r.reps&&r.reps+'회',noteFlat].filter(Boolean).join(' ');
     return `<div class="tp-row">
       <span class="tp-date">${r.date.slice(5)}</span>${dot}
       <div class="tp-bar-wrap"><div class="tp-bar" style="width:${pct}%;background:${col}"></div></div>
