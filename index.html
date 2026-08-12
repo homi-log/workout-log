@@ -573,31 +573,71 @@ function extractYoutubeId(url){
 }
 // 업로드 동영상 원본 파일은 용량이 커서 localStorage/클라우드 시트에 못 들어가므로,
 // 이 기기의 IndexedDB에만 저장(videoId로 참조). 다른 기기로는 동기화되지 않음.
-const VIDEO_DB_NAME='workout_videos', VIDEO_STORE='videos';
+// 썸네일도 같은 이유로 동기화 데이터(JSON)엔 절대 넣지 않고 별도 store에 videoId로 같이 저장한다 —
+// 클라우드 동기화는 DB 전체를 시트 셀 하나(5만자 한도)에 JSON으로 밀어넣는 구조라, 이미지 데이터가 섞이면
+// 동기화 전체가 깨질 수 있기 때문.
+const VIDEO_DB_NAME='workout_videos', VIDEO_STORE='videos', THUMB_STORE='thumbs';
 function openVideoDB(){
   return new Promise((resolve,reject)=>{
-    const req=indexedDB.open(VIDEO_DB_NAME,1);
-    req.onupgradeneeded=()=>{ req.result.createObjectStore(VIDEO_STORE); };
+    const req=indexedDB.open(VIDEO_DB_NAME,2);
+    req.onupgradeneeded=()=>{
+      const db=req.result;
+      if(!db.objectStoreNames.contains(VIDEO_STORE)) db.createObjectStore(VIDEO_STORE);
+      if(!db.objectStoreNames.contains(THUMB_STORE)) db.createObjectStore(THUMB_STORE);
+    };
     req.onsuccess=()=>resolve(req.result);
     req.onerror=()=>reject(req.error);
   });
 }
-async function videoDBPut(id, blob){
-  const db=await openVideoDB();
-  return new Promise((resolve,reject)=>{
-    const tx=db.transaction(VIDEO_STORE,'readwrite');
-    tx.objectStore(VIDEO_STORE).put(blob, id);
+function videoDBPutInto(store, id, blob){
+  return openVideoDB().then(db=>new Promise((resolve,reject)=>{
+    const tx=db.transaction(store,'readwrite');
+    tx.objectStore(store).put(blob, id);
     tx.oncomplete=()=>resolve();
     tx.onerror=()=>reject(tx.error);
-  });
+  }));
 }
-async function videoDBGet(id){
-  const db=await openVideoDB();
-  return new Promise((resolve,reject)=>{
-    const tx=db.transaction(VIDEO_STORE,'readonly');
-    const req=tx.objectStore(VIDEO_STORE).get(id);
+function videoDBGetFrom(store, id){
+  return openVideoDB().then(db=>new Promise((resolve,reject)=>{
+    const tx=db.transaction(store,'readonly');
+    const req=tx.objectStore(store).get(id);
     req.onsuccess=()=>resolve(req.result);
     req.onerror=()=>reject(req.error);
+  }));
+}
+function videoDBPut(id, blob){ return videoDBPutInto(VIDEO_STORE, id, blob); }
+function videoDBGet(id){ return videoDBGetFrom(VIDEO_STORE, id); }
+function thumbDBPut(id, blob){ return videoDBPutInto(THUMB_STORE, id, blob); }
+function thumbDBGet(id){ return videoDBGetFrom(THUMB_STORE, id); }
+
+// 업로드된 동영상 파일에서 미리보기용 프레임을 한 장 캡처해 작은 JPEG Blob으로 반환 (실패 시 null)
+function generateVideoThumbnail(file){
+  return new Promise(resolve=>{
+    let done=false;
+    const finish=v=>{ if(done) return; done=true; clearTimeout(timer); resolve(v); };
+    const video=document.createElement('video');
+    video.preload='metadata'; video.muted=true; video.playsInline=true;
+    const url=URL.createObjectURL(file);
+    video.src=url;
+    const cleanup=()=>URL.revokeObjectURL(url);
+    video.addEventListener('loadedmetadata', ()=>{
+      try{ video.currentTime = Math.min(1, (video.duration||2)/4) || 0; }
+      catch(e){ cleanup(); finish(null); }
+    });
+    video.addEventListener('seeked', ()=>{
+      try{
+        const maxW=320;
+        const vw=video.videoWidth||maxW, vh=video.videoHeight||180;
+        const scale=Math.min(1, maxW/vw);
+        const w=Math.max(1,Math.round(vw*scale)), h=Math.max(1,Math.round(vh*scale));
+        const canvas=document.createElement('canvas');
+        canvas.width=w; canvas.height=h;
+        canvas.getContext('2d').drawImage(video,0,0,w,h);
+        canvas.toBlob(blob=>{ cleanup(); finish(blob); }, 'image/jpeg', 0.72);
+      } catch(e){ cleanup(); finish(null); }
+    });
+    video.addEventListener('error', ()=>{ cleanup(); finish(null); });
+    const timer=setTimeout(()=>{ cleanup(); finish(null); }, 8000);
   });
 }
 function getExerciseNames(){
@@ -707,6 +747,7 @@ function renderLog(){
       </div>
     </div>`;
   }).join('');
+  hydrateUploadThumbs();
 }
 
 function toggleCard(id){
@@ -772,6 +813,19 @@ function videoBlockHtml(video){
     </div>`;
   }
   return '';
+}
+// 업로드 동영상은 목록 HTML엔 파일명 라벨만 먼저 넣어두고(동기 렌더),
+// 이 기기의 IndexedDB에 썸네일이 있으면 비동기로 불러와 이미지로 바꿔치기한다.
+function hydrateUploadThumbs(){
+  document.querySelectorAll('.ex-video-block-upload[data-vtype="upload"]').forEach(el=>{
+    const id=el.dataset.vref;
+    if(!id) return;
+    thumbDBGet(id).then(blob=>{
+      if(!blob || !el.isConnected) return;
+      el.classList.remove('ex-video-block-upload');
+      el.innerHTML = `<img src="${URL.createObjectURL(blob)}" alt=""><span class="video-play-icon">▶</span>`;
+    }).catch(()=>{});
+  });
 }
 // 썸네일 클릭 시 실제 재생 요소로 교체 (유튜브: iframe embed / 업로드: IndexedDB에서 blob 조회)
 function playExerciseVideo(el){
@@ -861,7 +915,16 @@ function hydrateVideoField(n, video){
   } else if(video.type==='upload' && video.videoId){
     card.dataset.videoType='upload'; card.dataset.videoId=video.videoId; card.dataset.videoName=video.name||'';
     setVideoTab(n,'upload');
-    if(preview) preview.innerHTML = `<div class="video-file-label">📁 ${escHtml(video.name||'업로드된 영상')} (이 기기에 저장됨 — 바꾸려면 새 파일을 선택하세요)</div>`;
+    if(preview){
+      preview.innerHTML = `<div class="video-file-label">📁 ${escHtml(video.name||'업로드된 영상')} (이 기기에 저장됨 — 바꾸려면 새 파일을 선택하세요)</div>`;
+      thumbDBGet(video.videoId).then(blob=>{
+        if(!blob || !preview.isConnected) return;
+        const img=document.createElement('img');
+        img.src=URL.createObjectURL(blob); img.alt='';
+        img.style.cssText='border-radius:8px;max-height:160px;width:100%;object-fit:contain;background:#000;margin-bottom:4px';
+        preview.prepend(img);
+      }).catch(()=>{});
+    }
   }
 }
 // 유튜브 링크 입력 처리
@@ -900,7 +963,11 @@ async function onVideoFileInput(n, event){
   if(preview) preview.innerHTML='<div class="video-uploading">저장 중…</div>';
   try {
     const videoId=uid();
-    await videoDBPut(videoId, file);
+    const [, thumbBlob] = await Promise.all([
+      videoDBPut(videoId, file),
+      generateVideoThumbnail(file).catch(()=>null)
+    ]);
+    if(thumbBlob) thumbDBPut(videoId, thumbBlob).catch(()=>{});
     card.dataset.videoType='upload'; card.dataset.videoId=videoId; card.dataset.videoName=file.name;
     delete card.dataset.videoUrl;
     const objUrl=URL.createObjectURL(file);
