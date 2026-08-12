@@ -159,7 +159,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:3
 .video-play-icon{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.7rem;pointer-events:none}
 .ex-video-block-upload{padding:10px;justify-content:flex-start;gap:8px;background:var(--paper);border:1px solid var(--rule)}
 .ex-video-block-upload .video-play-icon{position:static;transform:none;background:var(--accent);flex-shrink:0}
-.video-file-name{font-size:.72rem;color:var(--ink2)}
+.video-file-name{font-size:.72rem;color:var(--ink2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ex-video-frame{margin-top:6px;border-radius:8px;overflow:hidden}
 .ex-video-frame iframe{width:100%;height:200px;display:block;border:none}
 .ex-video-frame video{width:100%;max-height:min(70vh,480px);display:block;object-fit:contain;background:#000}
