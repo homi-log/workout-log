@@ -1160,12 +1160,16 @@ function openEdit(id){
 async function saveEdit(){
   const s=DB.find(x=>x.id===editingId);
   if(!s) return;
+  const savedId=editingId;
   s.date=document.getElementById('edit-date').value;
   s.memo=document.getElementById('edit-memo').value.trim();
   s.src=document.getElementById('edit-src').value;
   s.exercises=getExRowData(document.getElementById('edit-ex-inputs'));
   await saveDB();
   closeModal(); renderLog(); toast('✓ 저장되었습니다.');
+  // 편집한 항목은 날짜 변경 등으로 목록 내 위치가 바뀔 수 있으므로,
+  // 다시 찾아 첫 줄(날짜 헤더)이 보이는 위치로 스크롤해준다.
+  document.getElementById('card-'+savedId)?.scrollIntoView({block:'start', behavior:'smooth'});
 }
 function closeModal(){
   document.getElementById('modal-overlay').classList.remove('show');
