@@ -122,6 +122,8 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:3
 .set-header,.set-row{display:grid;grid-template-columns:1.2fr 0.8fr 0.8fr 0.8fr 26px;gap:5px;align-items:center}
 .set-header{margin:8px 0 2px}
 .set-header span{font-family:var(--mono);font-size:.58rem;letter-spacing:.06em;color:var(--ink3);text-transform:uppercase;text-align:center}
+.wt-unit-btn{font-family:var(--mono);font-size:.58rem;letter-spacing:.06em;color:var(--ink3);text-transform:uppercase;background:none;border:none;padding:0;margin:0;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:3px}
+.set-header .wt-unit-badge{font-size:.56rem;letter-spacing:0;text-transform:none;padding:1px 5px;border-radius:8px;background:var(--accent-light);color:var(--accent)}
 .set-row{margin-top:6px}
 .set-row input{font-family:var(--mono);font-size:.82rem;padding:8px 6px;border:1px solid var(--rule);border-radius:6px;background:#fff;color:var(--ink);outline:none;width:100%;text-align:center}
 .set-row input:focus{border-color:var(--accent)}
@@ -845,12 +847,20 @@ function playExerciseVideo(el){
   }
 }
 
+// 이 운동의 초기 무게 단위 추정: 기존 데이터에 단위가 찍힌 값이 있으면 그걸, 없으면 전역 기본 단위를 씀
+function inferExUnit(d){
+  const rows=exRows(d);
+  for(const r of rows){ if(r.weight && weightHasUnit(r.weight)) return weightUnit(r.weight); }
+  return getUnit();
+}
 function addExRow(data, container){
   rowCount++;
   const n=rowCount, d=data||{};
   const wrap=container||document.getElementById('ex-inputs');
   const div=document.createElement('div');
   div.className='ex-input-card'; div.id='exrow-'+n;
+  const initUnit=inferExUnit(d);
+  div.dataset.exUnit=initUnit;
   div.innerHTML=`
     <div class="ex-input-top">
       <span class="ex-input-num">${wrap.children.length+1}</span>
@@ -861,7 +871,10 @@ function addExRow(data, container){
       </div>
       <button type="button" class="btn btn-danger" onclick="removeExRow(${n})">✕</button>
     </div>
-    <div class="set-header"><span>무게</span><span>세트</span><span>횟수</span><span>RIR</span><span></span></div>
+    <div class="set-header">
+      <button type="button" class="wt-unit-btn" onclick="toggleExUnit(${n})" title="탭하여 이 운동만 단위 전환">무게<span class="wt-unit-badge">${initUnit}</span></button>
+      <span>세트</span><span>횟수</span><span>RIR</span><span></span>
+    </div>
     <div class="set-rows" id="setrows-${n}"></div>
     <button type="button" class="add-set-btn" onclick="addSetRow(${n})">＋ 세트 행</button>
     <div class="ex-input-field ex-memo">
@@ -987,6 +1000,15 @@ function clearExVideo(n){
   const preview=document.getElementById('video-preview-'+n);
   if(preview) preview.innerHTML='';
 }
+// 운동 카드별 무게 단위 전환(탭할 때마다 kg↔lbs). 이 운동의 세트 중 단위를 직접 안 적은 값에만 적용됨.
+function toggleExUnit(n){
+  const card=document.getElementById('exrow-'+n);
+  if(!card) return;
+  const next = card.dataset.exUnit==='lbs' ? 'kg' : 'lbs';
+  card.dataset.exUnit=next;
+  const badge=card.querySelector('.wt-unit-badge');
+  if(badge) badge.textContent=next;
+}
 
 // 무게·세트·횟수·RIR 한 행 추가
 function addSetRow(exN, d){
@@ -1091,11 +1113,12 @@ function getExRowData(wrap){
   return Array.from(wrap.children).map(card=>{
     const name=card.querySelector('.autocomplete-wrap input')?.value.trim()||'';
     const note=card.querySelector('.ex-memo textarea')?.value.trim()||'';
+    const exUnit=card.dataset.exUnit==='lbs' ? 'lbs' : 'kg'; // 이 운동 카드의 단위 토글(기본값은 생성 시 전역 기본 단위)
     const rows=Array.from(card.querySelectorAll('.set-row')).map(r=>{
       const w=r.querySelector('.w')?.value.trim()||'';
       return {
-        // 단위를 안 적었으면 저장 시점의 기본 단위를 확정해 찍음 (기기 간 동기화돼도 해석이 안 바뀌게)
-        weight: w && !weightHasUnit(w) ? w+getUnit() : w,
+        // 단위를 안 적었으면 이 운동 카드에서 고른 단위를 확정해 찍음 (기기 간 동기화돼도 해석이 안 바뀌게)
+        weight: w && !weightHasUnit(w) ? w+exUnit : w,
         sets:r.querySelector('.s')?.value.trim()||'',
         reps:r.querySelector('.r')?.value.trim()||'',
         rir:r.querySelector('.rir')?.value.trim()||'',
