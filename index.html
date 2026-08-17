@@ -119,7 +119,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:3
 .ex-input-field input:focus,.ex-input-field textarea:focus{border-color:var(--accent)}
 .ex-input-field textarea{resize:none;overflow:hidden;line-height:1.4;font-family:var(--sans);min-height:34px}
 /* 무게·세트·횟수 세트행 (헤더와 동일 그리드로 정렬 보장) */
-.set-header,.set-row{display:grid;grid-template-columns:1fr 1fr 1fr 26px;gap:6px;align-items:center}
+.set-header,.set-row{display:grid;grid-template-columns:1.2fr 0.8fr 0.8fr 0.8fr 26px;gap:5px;align-items:center}
 .set-header{margin:8px 0 2px}
 .set-header span{font-family:var(--mono);font-size:.58rem;letter-spacing:.06em;color:var(--ink3);text-transform:uppercase;text-align:center}
 .set-row{margin-top:6px}
@@ -310,12 +310,12 @@ const STORAGE_KEY = 'workout_db';
 const CLOUD_URL_KEY = 'workout_cloud_url'; // Apps Script 웹앱 URL (기기별 localStorage, 코드/저장소엔 미포함)
 
 // ── 운동 데이터 정규화 ──
-// exercise = { name, note, rows:[{weight,sets,reps}] }
+// exercise = { name, note, rows:[{weight,sets,reps,rir}] }
 // 예전 형식 { name, weight, sets, reps, note }(단일)도 자동 변환해 호환합니다.
 function exRows(e){
   if(!e) return [];
   if(Array.isArray(e.rows)) return e.rows;
-  if(e.weight||e.sets||e.reps) return [{weight:e.weight||'',sets:e.sets||'',reps:e.reps||''}];
+  if(e.weight||e.sets||e.reps) return [{weight:e.weight||'',sets:e.sets||'',reps:e.reps||'',rir:e.rir||''}];
   return [];
 }
 // 단위가 없는 과거 데이터는 항상 kg로 표시돼왔으므로, 마이그레이션 시 kg로 명시 확정합니다.
@@ -335,9 +335,9 @@ function normalizeExercise(e){
   if(!e || typeof e!=='object') return {name:'',note:'',rows:[],video:null};
   let rows;
   if(Array.isArray(e.rows)){
-    rows = e.rows.map(r=>({ weight:stampLegacyWeight(String(r.weight??'')), sets:String(r.sets??''), reps:String(r.reps??'') }));
+    rows = e.rows.map(r=>({ weight:stampLegacyWeight(String(r.weight??'')), sets:String(r.sets??''), reps:String(r.reps??''), rir:String(r.rir??'') }));
   } else if(e.weight||e.sets||e.reps){
-    rows = [{ weight:stampLegacyWeight(String(e.weight||'')), sets:String(e.sets||''), reps:String(e.reps||'') }];
+    rows = [{ weight:stampLegacyWeight(String(e.weight||'')), sets:String(e.sets||''), reps:String(e.reps||''), rir:String(e.rir||'') }];
   } else {
     rows = [];
   }
@@ -708,6 +708,7 @@ function renderLog(){
         if(r.weight) chips.push(`<span class="ex-chip">${displayWeight(r.weight)}</span>`);
         if(r.sets)   chips.push(`<span class="ex-chip">${r.sets}세트</span>`);
         if(r.reps)   chips.push(`<span class="ex-chip">${r.reps}회</span>`);
+        if(r.rir)    chips.push(`<span class="ex-chip">RIR ${escHtml(r.rir)}</span>`);
         return chips.length?`<div class="ex-chips">${chips.join('')}</div>`:'';
       }).join('');
       return `<div class="ex-card">
@@ -860,7 +861,7 @@ function addExRow(data, container){
       </div>
       <button type="button" class="btn btn-danger" onclick="removeExRow(${n})">✕</button>
     </div>
-    <div class="set-header"><span>무게</span><span>세트</span><span>횟수</span><span></span></div>
+    <div class="set-header"><span>무게</span><span>세트</span><span>횟수</span><span>RIR</span><span></span></div>
     <div class="set-rows" id="setrows-${n}"></div>
     <button type="button" class="add-set-btn" onclick="addSetRow(${n})">＋ 세트 행</button>
     <div class="ex-input-field ex-memo">
@@ -987,7 +988,7 @@ function clearExVideo(n){
   if(preview) preview.innerHTML='';
 }
 
-// 무게·세트·횟수 한 행 추가
+// 무게·세트·횟수·RIR 한 행 추가
 function addSetRow(exN, d){
   d=d||{};
   const cont=document.getElementById('setrows-'+exN);
@@ -998,6 +999,7 @@ function addSetRow(exN, d){
     <input class="w" placeholder="예: 20, 45lb" value="${escAttr(d.weight)}">
     <input class="s" placeholder="예: 3" value="${escAttr(d.sets)}">
     <input class="r" placeholder="예: 12" value="${escAttr(d.reps)}">
+    <input class="rir" placeholder="예: 2" value="${escAttr(d.rir)}">
     <button type="button" class="set-del" onclick="removeSetRow(this)" title="이 행 삭제">✕</button>`;
   cont.appendChild(div);
 }
@@ -1065,10 +1067,11 @@ function selectAc(n,name){
   const latest=getLatestRecord(name);
   const first=row.querySelector('.set-row');
   if(latest && first){
-    const w=first.querySelector('.w'), s=first.querySelector('.s'), r=first.querySelector('.r');
+    const w=first.querySelector('.w'), s=first.querySelector('.s'), r=first.querySelector('.r'), rir=first.querySelector('.rir');
     if(w && !w.value.trim() && latest.weight) w.value=latest.weight;
     if(s && !s.value.trim() && latest.sets)   s.value=latest.sets;
     if(r && !r.value.trim() && latest.reps)   r.value=latest.reps;
+    if(rir && !rir.value.trim() && latest.rir) rir.value=latest.rir;
     toast('최근 기록 자동 입력됨');
   }
 }
@@ -1095,8 +1098,9 @@ function getExRowData(wrap){
         weight: w && !weightHasUnit(w) ? w+getUnit() : w,
         sets:r.querySelector('.s')?.value.trim()||'',
         reps:r.querySelector('.r')?.value.trim()||'',
+        rir:r.querySelector('.rir')?.value.trim()||'',
       };
-    }).filter(x=>x.weight||x.sets||x.reps);
+    }).filter(x=>x.weight||x.sets||x.reps||x.rir);
     let video=null;
     if(card.dataset.videoType==='youtube' && card.dataset.videoUrl){
       video={type:'youtube', url:card.dataset.videoUrl};
@@ -1210,7 +1214,7 @@ function renderTrend(){
     let best=null, bestN=null;
     exRows(e).forEach(r=>{ const nn=extractLastNum(r.weight); if(nn!==null && (bestN===null||nn>bestN)){ bestN=nn; best=r; } });
     const rr=best||exRows(e)[0]||{};
-    records.push({date:s.date,weight:rr.weight||'',wNum:bestN,sets:rr.sets||'',reps:rr.reps||'',note:e.note,src:s.src});
+    records.push({date:s.date,weight:rr.weight||'',wNum:bestN,sets:rr.sets||'',reps:rr.reps||'',rir:rr.rir||'',note:e.note,src:s.src});
   }));
   records.sort((a,b)=>a.date.localeCompare(b.date));
   title.textContent=name; title.style.color='var(--ink)';
@@ -1224,7 +1228,7 @@ function renderTrend(){
     const col=r.src==='planned'?'#997300':r.src==='personal'?'#2d5a3d':'#c8a060';
     const dot=`<span style="width:7px;height:7px;border-radius:50%;background:${col};flex-shrink:0;display:inline-block"></span>`;
     const noteFlat=r.note?escHtml(r.note).replace(/\n+/g,' '):'';
-    const detail=[r.sets&&r.sets+'세트',r.reps&&r.reps+'회',noteFlat].filter(Boolean).join(' ');
+    const detail=[r.sets&&r.sets+'세트',r.reps&&r.reps+'회',r.rir&&'RIR '+r.rir,noteFlat].filter(Boolean).join(' ');
     return `<div class="tp-row">
       <span class="tp-date">${r.date.slice(5)}</span>${dot}
       <div class="tp-bar-wrap"><div class="tp-bar" style="width:${pct}%;background:${col}"></div></div>
@@ -1407,15 +1411,15 @@ function exportJSON(){
   downloadOrShow(filename, content, 'application/json');
 }
 function exportCSV(){
-  const rows=[['날짜','출처','메모','운동명','무게','세트','횟수','운동메모']];
+  const rows=[['날짜','출처','메모','운동명','무게','세트','횟수','RIR','운동메모']];
   [...DB].sort((a,b)=>a.date.localeCompare(b.date)).forEach(s=>
     s.exercises.forEach(e=>{
       const srcLbl=s.src==='personal'?'개인일지':s.src==='planned'?'예정':'세션지';
       const ers=exRows(e);
       if(!ers.length){
-        rows.push([s.date,srcLbl,s.memo||'',e.name,'','','',e.note||'']);
+        rows.push([s.date,srcLbl,s.memo||'',e.name,'','','','',e.note||'']);
       } else {
-        ers.forEach(r=>rows.push([s.date,srcLbl,s.memo||'',e.name,r.weight?displayWeight(r.weight):'',r.sets||'',r.reps||'',e.note||'']));
+        ers.forEach(r=>rows.push([s.date,srcLbl,s.memo||'',e.name,r.weight?displayWeight(r.weight):'',r.sets||'',r.reps||'',r.rir||'',e.note||'']));
       }
     })
   );

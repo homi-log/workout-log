@@ -73,7 +73,7 @@ function saveData_(data){
 function exRows_(ex){
   if (!ex) return [];
   if (Array.isArray(ex.rows)) return ex.rows;
-  if (ex.weight || ex.sets || ex.reps) return [{ weight: ex.weight, sets: ex.sets, reps: ex.reps }];
+  if (ex.weight || ex.sets || ex.reps) return [{ weight: ex.weight, sets: ex.sets, reps: ex.reps, rir: ex.rir }];
   return [];
 }
 
@@ -83,7 +83,7 @@ function writeView_(data){
   var sh = ss.getSheetByName(VIEW_SHEET);
   if (!sh) sh = ss.insertSheet(VIEW_SHEET);
   sh.clearContents();
-  var header = ['날짜', '출처', '메모', '운동명', '무게', '세트', '횟수', '운동메모'];
+  var header = ['날짜', '출처', '메모', '운동명', '무게', '세트', '횟수', 'RIR', '운동메모'];
   var rows = [header];
   var srcLabel = { personal: '개인일지', session: '세션지', planned: '예정' };
   data.slice().sort(function(a, b){
@@ -91,18 +91,18 @@ function writeView_(data){
   }).forEach(function(s){
     var exs = Array.isArray(s.exercises) ? s.exercises : [];
     if (exs.length === 0) {
-      rows.push([s.date || '', srcLabel[s.src] || s.src || '', s.memo || '', '', '', '', '', '']);
+      rows.push([s.date || '', srcLabel[s.src] || s.src || '', s.memo || '', '', '', '', '', '', '']);
       return;
     }
     exs.forEach(function(ex){
       var setRows = exRows_(ex);
       if (setRows.length === 0) {
-        rows.push([s.date || '', srcLabel[s.src] || s.src || '', s.memo || '', ex.name || '', '', '', '', ex.note || '']);
+        rows.push([s.date || '', srcLabel[s.src] || s.src || '', s.memo || '', ex.name || '', '', '', '', '', ex.note || '']);
       } else {
         setRows.forEach(function(r){
           rows.push([
             s.date || '', srcLabel[s.src] || s.src || '', s.memo || '',
-            ex.name || '', r.weight || '', r.sets || '', r.reps || '', ex.note || ''
+            ex.name || '', r.weight || '', r.sets || '', r.reps || '', r.rir || '', ex.note || ''
           ]);
         });
       }
