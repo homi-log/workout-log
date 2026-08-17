@@ -235,14 +235,6 @@ svg#trend-svg{width:100%;height:180px;overflow:visible}
   <!-- 새 세션 -->
   <div class="panel" id="panel-add">
     <div class="form-card">
-      <div class="unit-bar">
-        <span class="unit-bar-label">기본 무게 단위</span>
-        <div class="unit-toggle">
-          <button type="button" class="unit-opt" data-unit="kg" onclick="setDefaultUnit('kg')">kg</button>
-          <button type="button" class="unit-opt" data-unit="lbs" onclick="setDefaultUnit('lbs')">lbs</button>
-        </div>
-        <span class="unit-bar-hint">단위 없이 입력하면 이 단위로 저장. 다른 단위는 숫자 뒤에 kg/lb를 직접 적으세요.</span>
-      </div>
       <div class="form-row">
         <div class="field f-date"><label>날짜</label><input type="date" id="in-date"></div>
         <div class="field f-memo"><label>메모</label><textarea id="in-memo" placeholder="예: 컨디션 보통" rows="1" oninput="autoGrow(this)"></textarea></div>
@@ -253,6 +245,14 @@ svg#trend-svg{width:100%;height:180px;overflow:visible}
             <option value="planned">예정</option>
           </select>
         </div>
+      </div>
+      <div class="unit-bar">
+        <span class="unit-bar-label">기본 무게 단위</span>
+        <div class="unit-toggle">
+          <button type="button" class="unit-opt" data-unit="kg" onclick="setDefaultUnit('kg')">kg</button>
+          <button type="button" class="unit-opt" data-unit="lbs" onclick="setDefaultUnit('lbs')">lbs</button>
+        </div>
+        <span class="unit-bar-hint">단위 없이 입력하면 이 단위로 저장. 다른 단위는 숫자 뒤에 kg/lb를 직접 적으세요.</span>
       </div>
       <div class="ex-inputs" id="ex-inputs"></div>
       <button class="add-ex-btn" onclick="addExRow()">＋ 운동 추가</button>
