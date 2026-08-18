@@ -1233,9 +1233,9 @@ function renderTrend(){
   const records=[];
   DB.forEach(s=>s.exercises.forEach(e=>{
     if(e.name!==name) return;
-    // 가장 무거운 세트를 대표값으로 사용
+    // 가장 무거운 세트를 대표값으로 사용 (kg 환산 기준으로 비교 — lbs 기록도 올바르게 비교되게)
     let best=null, bestN=null;
-    exRows(e).forEach(r=>{ const nn=extractLastNum(r.weight); if(nn!==null && (bestN===null||nn>bestN)){ bestN=nn; best=r; } });
+    exRows(e).forEach(r=>{ const nn=weightToKg(r.weight); if(nn!==null && (bestN===null||nn>bestN)){ bestN=nn; best=r; } });
     const rr=best||exRows(e)[0]||{};
     records.push({date:s.date,weight:rr.weight||'',wNum:bestN,sets:rr.sets||'',reps:rr.reps||'',rir:rr.rir||'',note:e.note,src:s.src});
   }));
@@ -1273,7 +1273,7 @@ function drawChart(data){
   const circles=data.map((d,i)=>{
     const col=d.src==='planned'?'#997300':d.src==='personal'?'#2d5a3d':'#c8a060';
     return `<circle cx="${xs(i)}" cy="${ys(d.wNum)}" r="3.5" fill="${col}" stroke="#fff" stroke-width="1.5"/>
-      <text x="${xs(i)}" y="${ys(d.wNum)-9}" text-anchor="middle" font-size="8.5" font-family="IBM Plex Mono,monospace" fill="#4a4a46">${d.wNum}</text>`;
+      <text x="${xs(i)}" y="${ys(d.wNum)-9}" text-anchor="middle" font-size="8.5" font-family="IBM Plex Mono,monospace" fill="#4a4a46">${Math.round(d.wNum*10)/10}</text>`;
   }).join('');
   const xLabels=data.map((d,i)=>
     `<text x="${xs(i)}" y="${H-2}" text-anchor="middle" font-size="8" font-family="IBM Plex Mono,monospace" fill="#8a8a84">${d.date.slice(5)}</text>`
