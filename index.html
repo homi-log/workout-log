@@ -762,6 +762,7 @@ function renderLog(){
         ${sessionMemoBlock}
         <div class="ex-list">${exCards}</div>
         <div class="session-foot">
+          <button class="btn btn-ghost btn-sm" onclick="copySessionToNew('${s.id}')">복사</button>
           <button class="btn btn-danger" onclick="deleteSession('${s.id}')">삭제</button>
           ${convertBtn}
           <button class="btn btn-ghost btn-sm" onclick="openEdit('${s.id}')">편집</button>
@@ -807,6 +808,23 @@ async function convertPlanned(id){
   await saveDB();
   renderLog();
   toast('✓ 개인일지로 전환됐어요.');
+}
+// 그날의 운동 전체를 '새 세션' 입력 폼에 복사해 넣음 (날짜는 오늘로, 메모는 비움 — 원본은 그대로 유지)
+function copySessionToNew(id){
+  const s=DB.find(x=>x.id===id);
+  if(!s) return;
+  switchTab('add');
+  document.getElementById('in-date').value=new Date().toISOString().slice(0,10);
+  const memoEl=document.getElementById('in-memo');
+  memoEl.value=''; memoEl.style.height='';
+  document.getElementById('in-src').value=s.src||'personal';
+  const wrap=document.getElementById('ex-inputs');
+  wrap.innerHTML=''; rowCount=0;
+  const cloned=JSON.parse(JSON.stringify(s.exercises||[]));
+  if(cloned.length) cloned.forEach(e=>addExRow(e, wrap));
+  else addExRow();
+  toast('✓ 이 날의 운동을 새 세션에 복사했어요. 날짜를 확인하고 저장하세요.');
+  window.scrollTo({top:0, behavior:'smooth'});
 }
 
 // ══════════════════════════════════
