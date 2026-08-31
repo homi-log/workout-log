@@ -1055,7 +1055,7 @@ function addSetRow(exN, d){
   const div=document.createElement('div');
   div.className='set-row';
   div.innerHTML=`
-    <input class="w" placeholder="예: 20, 45lb" value="${escAttr(d.weight)}">
+    <input class="w" placeholder="예: 20, 45lb" inputmode="decimal" value="${escAttr(d.weight)}">
     <input class="s" placeholder="예: 3" inputmode="numeric" value="${escAttr(d.sets)}">
     <input class="r" placeholder="예: 12" inputmode="numeric" value="${escAttr(d.reps)}">
     <input class="rir" placeholder="예: 2" inputmode="decimal" value="${escAttr(d.rir)}">
