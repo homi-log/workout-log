@@ -1056,9 +1056,9 @@ function addSetRow(exN, d){
   div.className='set-row';
   div.innerHTML=`
     <input class="w" placeholder="예: 20, 45lb" value="${escAttr(d.weight)}">
-    <input class="s" placeholder="예: 3" value="${escAttr(d.sets)}">
-    <input class="r" placeholder="예: 12" value="${escAttr(d.reps)}">
-    <input class="rir" placeholder="예: 2" value="${escAttr(d.rir)}">
+    <input class="s" placeholder="예: 3" inputmode="numeric" value="${escAttr(d.sets)}">
+    <input class="r" placeholder="예: 12" inputmode="numeric" value="${escAttr(d.reps)}">
+    <input class="rir" placeholder="예: 2" inputmode="decimal" value="${escAttr(d.rir)}">
     <button type="button" class="set-del" onclick="removeSetRow(this)" title="이 행 삭제">✕</button>`;
   cont.appendChild(div);
 }
