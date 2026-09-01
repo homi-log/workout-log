@@ -130,6 +130,10 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:3
 .set-row{margin-top:6px}
 .set-row input{font-family:var(--mono);font-size:.82rem;padding:8px 6px;border:1px solid var(--rule);border-radius:6px;background:#fff;color:var(--ink);outline:none;width:100%;text-align:center}
 .set-row input:focus{border-color:var(--accent)}
+.w-wrap{position:relative}
+.w-wrap input{padding-right:22px}
+.w-plus-btn{position:absolute;right:3px;top:50%;transform:translateY(-50%);width:17px;height:17px;border:none;border-radius:50%;background:var(--accent-light);color:var(--accent);font-size:.72rem;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.w-plus-btn:active{background:var(--accent);color:#fff}
 .set-del{font-size:.72rem;height:34px;border:1px solid var(--rule);border-radius:6px;background:var(--paper);color:var(--warn);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
 .set-del:active{background:#fbeaea;border-color:var(--warn)}
 .add-set-btn{font-family:var(--mono);font-size:.66rem;color:var(--ink2);background:none;border:1px dashed var(--rule);border-radius:6px;padding:6px;cursor:pointer;width:100%;margin-top:7px}
@@ -1055,7 +1059,10 @@ function addSetRow(exN, d){
   const div=document.createElement('div');
   div.className='set-row';
   div.innerHTML=`
-    <input class="w" placeholder="예: 20, 45lb" inputmode="decimal" value="${escAttr(d.weight)}">
+    <div class="w-wrap">
+      <input class="w" placeholder="예: 20, 45lb" inputmode="decimal" value="${escAttr(d.weight)}">
+      <button type="button" class="w-plus-btn" onclick="insertPlusInWeight(this)" tabindex="-1" title="+ 삽입 (원판 합산 표기, 예: 20+2.5)">+</button>
+    </div>
     <input class="s" placeholder="예: 3" inputmode="numeric" value="${escAttr(d.sets)}">
     <input class="r" placeholder="예: 12" inputmode="numeric" value="${escAttr(d.reps)}">
     <input class="rir" placeholder="예: 2" inputmode="decimal" value="${escAttr(d.rir)}">
@@ -1068,6 +1075,17 @@ function removeSetRow(btn){
   const cont=row.parentElement;
   if(cont.children.length>1) row.remove();
   else row.querySelectorAll('input').forEach(i=>i.value='');
+}
+// 무게 입력칸의 현재 커서 위치에 '+'를 넣어줌 (숫자 키패드엔 +가 없는 기기가 많아서 원판 합산 표기용으로 제공)
+function insertPlusInWeight(btn){
+  const input=btn.previousElementSibling;
+  if(!input) return;
+  const start=input.selectionStart ?? input.value.length;
+  const end=input.selectionEnd ?? input.value.length;
+  input.value=input.value.slice(0,start)+'+'+input.value.slice(end);
+  input.focus();
+  const pos=start+1;
+  input.setSelectionRange(pos,pos);
 }
 
 function renumberRows(wrap){
