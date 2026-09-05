@@ -179,13 +179,18 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:3
 #trend-chart-wrap{background:var(--paper);border:1px solid var(--rule);border-radius:12px;padding:20px 16px}
 #trend-title{font-weight:500;margin-bottom:3px}
 #trend-subtitle{font-family:var(--mono);font-size:.65rem;color:var(--ink3);margin-bottom:16px}
-svg#trend-svg{width:100%;height:180px;overflow:visible}
+.trend-chart-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+svg#trend-svg{height:180px;display:block}
 .trend-points-list{margin-top:16px;display:flex;flex-direction:column;gap:7px}
 .tp-row{display:flex;align-items:center;gap:8px;font-size:.75rem}
 .tp-date{font-family:var(--mono);color:var(--ink3);width:80px;flex-shrink:0;font-size:.68rem}
 .tp-bar-wrap{flex:1;height:5px;background:var(--bg);border-radius:3px;overflow:hidden}
 .tp-bar{height:100%;border-radius:3px;background:var(--accent)}
 .tp-val{font-family:var(--mono);width:60px;text-align:right;font-size:.72rem;color:var(--accent);flex-shrink:0}
+/* 주간 총 볼륨 목록 (날짜 범위를 온전히 보여주려고 날짜를 별도 줄에 표시) */
+.tp-row-vol{margin-bottom:2px}
+.tp-vol-date{font-family:var(--mono);font-size:.68rem;color:var(--ink3);margin-bottom:4px}
+.tp-vol-bar-line{display:flex;align-items:center;gap:8px}
 .tp-note{color:var(--ink3);font-size:.65rem;flex:1}
 
 /* 토스트 */
@@ -283,7 +288,9 @@ svg#trend-svg{width:100%;height:180px;overflow:visible}
     <div id="trend-chart-wrap">
       <div id="trend-title" style="color:var(--ink3);font-size:.85rem">운동을 선택하면 추이가 표시됩니다.</div>
       <div id="trend-subtitle"></div>
-      <svg id="trend-svg" style="display:none"></svg>
+      <div class="trend-chart-scroll" id="trend-chart-scroll">
+        <svg id="trend-svg" style="display:none"></svg>
+      </div>
       <div class="trend-points-list" id="trend-points"></div>
     </div>
   </div>
@@ -1292,6 +1299,12 @@ function weekStart(dateStr){
   d.setDate(d.getDate()-day);
   return d.toISOString().slice(0,10);
 }
+// 그 주의 마지막 날(일요일) 날짜
+function weekEnd(wkStartStr){
+  const d=new Date(wkStartStr+'T00:00:00');
+  d.setDate(d.getDate()+6);
+  return d.toISOString().slice(0,10);
+}
 function renderWeeklyVolume(){
   const title=document.getElementById('trend-title');
   const sub=document.getElementById('trend-subtitle');
@@ -1318,15 +1331,16 @@ function renderWeeklyVolume(){
   if(chartData.length>=2){ svg.style.display='block'; drawChart(chartData); }
   else svg.style.display='none';
   const maxV=Math.max(...weeks.map(wk=>weekMap[wk]),1);
-  pts.innerHTML=weeks.map(wk=>{
+  // 최신 주가 맨 위로 오게 내림차순으로 표시
+  pts.innerHTML=weeks.slice().reverse().map(wk=>{
     const v=weekMap[wk];
     const pct=Math.round((v/maxV)*100);
-    return `<div class="tp-row">
-      <span class="tp-date">${wk.slice(5)}</span>
-      <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;display:inline-block"></span>
-      <div class="tp-bar-wrap"><div class="tp-bar" style="width:${pct}%"></div></div>
-      <span class="tp-val">${Math.round(v).toLocaleString()}kg</span>
-      <span class="tp-note"></span>
+    return `<div class="tp-row-vol">
+      <div class="tp-vol-date">${wk} ~ ${weekEnd(wk)}</div>
+      <div class="tp-vol-bar-line">
+        <div class="tp-bar-wrap"><div class="tp-bar" style="width:${pct}%"></div></div>
+        <span class="tp-val">${Math.round(v).toLocaleString()}kg</span>
+      </div>
     </div>`;
   }).join('');
 }
@@ -1373,8 +1387,16 @@ function renderTrend(){
   }).join('');
 }
 function drawChart(data){
+  const scrollWrap=document.getElementById('trend-chart-scroll');
   const svg=document.getElementById('trend-svg');
-  const W=svg.clientWidth||340,H=170,P={t:16,r:16,b:28,l:32};
+  const H=170,P={t:16,r:16,b:28,l:32};
+  const PER_POINT=56; // 포인트 사이 최소 간격(px) — 많아지면 이 너비만큼 넓어져 가로 스크롤됨
+  const containerW=(scrollWrap&&scrollWrap.clientWidth)||340;
+  const neededW=P.l+P.r+PER_POINT*Math.max(data.length-1,0);
+  const W=Math.max(containerW,neededW);
+  svg.setAttribute('width',W);
+  svg.setAttribute('height',H);
+  svg.style.width=W+'px';
   const iW=W-P.l-P.r,iH=H-P.t-P.b;
   const vals=data.map(d=>d.wNum);
   const minV=Math.min(...vals)*.88,maxV=Math.max(...vals)*1.06;
@@ -1402,6 +1424,8 @@ function drawChart(data){
   <text x="${P.l-4}" y="${P.t+5}" text-anchor="end" font-size="8" font-family="IBM Plex Mono,monospace" fill="#8a8a84">${Math.round(maxV)}</text>
   <text x="${P.l-4}" y="${P.t+iH+3}" text-anchor="end" font-size="8" font-family="IBM Plex Mono,monospace" fill="#8a8a84">${Math.round(minV)}</text>
   <text x="${P.l}" y="${P.t-5}" font-size="7.5" font-family="IBM Plex Mono,monospace" fill="#8a8a84">kg</text>`;
+  // 최신 데이터(맨 오른쪽)가 보이는 위치로 스크롤 (레이아웃 반영 후 실행되게 다음 프레임에)
+  if(scrollWrap) requestAnimationFrame(()=>{ scrollWrap.scrollLeft=scrollWrap.scrollWidth; });
 }
 
 // ══════════════════════════════════
