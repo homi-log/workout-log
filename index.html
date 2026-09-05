@@ -177,13 +177,11 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:3
 .ex-video-frame video{width:100%;max-height:min(70vh,480px);display:block;object-fit:contain;background:#000}
 
 /* 추이 */
-.trend-controls{margin-bottom:20px}
-.trend-controls select{font-family:var(--mono);font-size:.78rem;padding:9px 12px;border:1px solid var(--rule);border-radius:8px;background:#fff;color:var(--ink);outline:none;width:100%;-webkit-appearance:none}
-#trend-chart-wrap{background:var(--paper);border:1px solid var(--rule);border-radius:12px;padding:20px 16px}
-#trend-title{font-weight:500;margin-bottom:3px}
-#trend-subtitle{font-family:var(--mono);font-size:.65rem;color:var(--ink3);margin-bottom:16px}
+.trend-section{background:var(--paper);border:1px solid var(--rule);border-radius:12px;padding:20px 16px;margin-bottom:16px}
+.trend-section-title{font-weight:500;margin-bottom:3px}
+.trend-subtitle-text{font-family:var(--mono);font-size:.65rem;color:var(--ink3);margin-bottom:16px;min-height:14px}
 .trend-chart-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
-svg#trend-svg{height:180px;display:block}
+.trend-svg{height:180px;display:block}
 .trend-points-list{margin-top:16px;display:flex;flex-direction:column;gap:7px}
 .tp-row{display:flex;align-items:center;gap:8px;font-size:.75rem}
 .tp-date{font-family:var(--mono);color:var(--ink3);width:80px;flex-shrink:0;font-size:.68rem}
@@ -329,16 +327,23 @@ svg#trend-svg{height:180px;display:block}
 
   <!-- 추이 분석 -->
   <div class="panel" id="panel-trend">
-    <div class="trend-controls">
-      <select id="trend-ex" onchange="renderTrend()"><option value="">운동 선택…</option></select>
+    <div class="trend-section">
+      <div class="trend-section-title">⚖️ 체중 주간 평균</div>
+      <div class="trend-subtitle-text" id="wavg-subtitle"></div>
+      <div class="trend-chart-scroll" id="wavg-scroll"><svg id="wavg-svg" class="trend-svg" style="display:none"></svg></div>
+      <div class="trend-points-list" id="wavg-points"></div>
     </div>
-    <div id="trend-chart-wrap">
-      <div id="trend-title" style="color:var(--ink3);font-size:.85rem">운동을 선택하면 추이가 표시됩니다.</div>
-      <div id="trend-subtitle"></div>
-      <div class="trend-chart-scroll" id="trend-chart-scroll">
-        <svg id="trend-svg" style="display:none"></svg>
-      </div>
-      <div class="trend-points-list" id="trend-points"></div>
+    <div class="trend-section">
+      <div class="trend-section-title">📊 주간 총 볼륨</div>
+      <div class="trend-subtitle-text" id="vol-subtitle"></div>
+      <div class="trend-chart-scroll" id="vol-scroll"><svg id="vol-svg" class="trend-svg" style="display:none"></svg></div>
+      <div class="trend-points-list" id="vol-points"></div>
+    </div>
+    <div class="trend-section">
+      <div class="trend-section-title">🍽 주간 평균 칼로리</div>
+      <div class="trend-subtitle-text" id="cal-subtitle"></div>
+      <div class="trend-chart-scroll" id="cal-scroll"><svg id="cal-svg" class="trend-svg" style="display:none"></svg></div>
+      <div class="trend-points-list" id="cal-points"></div>
     </div>
   </div>
 </div>
@@ -439,12 +444,6 @@ function normalizeMealEntry(m){
 }
 function normalizeWeightDB(){ WEIGHT_DB = WEIGHT_DB.map(normalizeWeightEntry).filter(Boolean); }
 function normalizeMealDB(){ MEAL_DB = MEAL_DB.map(normalizeMealEntry).filter(Boolean); }
-// 한 운동에서 가장 무거운 세트의 무게(kg 환산) — 추이 분석용
-function exMaxWeight(e){
-  let max=null;
-  exRows(e).forEach(r=>{ const n=weightToKg(r.weight); if(n!==null && (max===null||n>max)) max=n; });
-  return max;
-}
 
 // ── 클라우드(Google 시트) 연동 ──
 function getCloudUrl(){ return (localStorage.getItem(CLOUD_URL_KEY) || '').trim(); }
@@ -546,7 +545,7 @@ async function backgroundSync(){
       renderLog();
       renderWeightLog();
       renderMealLog();
-      if(document.getElementById('panel-trend')?.classList.contains('active')) populateTrendSelect();
+      if(document.getElementById('panel-trend')?.classList.contains('active')) renderTrendSummary();
     }
   } catch(e){
     // 로컬 데이터가 이미 표시됨 → 조용히 무시
@@ -682,7 +681,7 @@ function setDefaultUnit(u){
   localStorage.setItem(UNIT_KEY, u==='lbs'?'lbs':'kg');
   updateUnitToggle();
   renderLog();
-  if(document.getElementById('panel-trend')?.classList.contains('active')) renderTrend();
+  if(document.getElementById('panel-trend')?.classList.contains('active')) renderTrendSummary();
 }
 function updateUnitToggle(){
   const cur=getUnit();
@@ -781,7 +780,7 @@ function switchTab(name){
   });
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('panel-'+name).classList.add('active');
-  if(name==='trend') populateTrendSelect();
+  if(name==='trend') renderTrendSummary();
 }
 
 // ══════════════════════════════════
@@ -1718,51 +1717,9 @@ function maybeCloseModal(e){
 }
 
 // ══════════════════════════════════
-// 추이 분석
+// 추이 분석 — 체중 주간 평균 / 주간 총 볼륨 / 주간 평균 칼로리를 한 화면에 정리해서 보여줌
+// (종목별 통계는 별도 화면에서 다시 구현 예정이라 지금은 보류)
 // ══════════════════════════════════
-function populateTrendSelect(){
-  const sel=document.getElementById('trend-ex'), cur=sel.value;
-  const names=getExerciseNames().filter(x=>{
-    let cnt=0;
-    DB.forEach(s=>s.exercises.forEach(e=>{ if(e.name===x.name && exMaxWeight(e)!==null) cnt++; }));
-    return cnt>=2;
-  });
-  sel.innerHTML='<option value="">운동 선택…</option>'+
-    `<option value="__volume__" ${cur==='__volume__'?'selected':''}>📊 주간 총 볼륨 (전체 운동 합산)</option>`+
-    `<option value="__weight__" ${cur==='__weight__'?'selected':''}>⚖️ 체중 변화</option>`+
-    names.map(x=>`<option value="${x.name}" ${x.name===cur?'selected':''}>${x.name} (${x.count}회)</option>`).join('');
-}
-function renderWeightTrend(){
-  const title=document.getElementById('trend-title');
-  const sub=document.getElementById('trend-subtitle');
-  const svg=document.getElementById('trend-svg');
-  const pts=document.getElementById('trend-points');
-  title.textContent='체중 변화'; title.style.color='var(--ink)';
-  const records=WEIGHT_DB.map(w=>({date:w.date, wNum:weightToKg(w.weight), weight:w.weight, bodyFat:w.bodyFat, memo:w.memo, src:'personal'}))
-    .filter(r=>r.wNum!==null)
-    .sort((a,b)=>a.date.localeCompare(b.date));
-  if(!records.length){
-    sub.textContent='';
-    svg.style.display='none';
-    pts.innerHTML='<div class="empty" style="padding:20px 0">체중 기록이 아직 없어요.</div>';
-    return;
-  }
-  sub.textContent=`총 ${records.length}회 · ${records[0].date} → ${records[records.length-1].date}`;
-  if(records.length>=2){ svg.style.display='block'; drawChart(records); }
-  else svg.style.display='none';
-  const maxW=Math.max(...records.map(r=>r.wNum||0),1);
-  pts.innerHTML=records.map(r=>{
-    const pct=Math.round((r.wNum/maxW)*100);
-    const detail=[r.bodyFat&&`체지방 ${escHtml(r.bodyFat)}%`, r.memo&&escHtml(r.memo)].filter(Boolean).join(' · ');
-    return `<div class="tp-row">
-      <span class="tp-date">${r.date.slice(5)}</span>
-      <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;display:inline-block"></span>
-      <div class="tp-bar-wrap"><div class="tp-bar" style="width:${pct}%"></div></div>
-      <span class="tp-val">${displayWeight(r.weight)}</span>
-      <span class="tp-note">${detail}</span>
-    </div>`;
-  }).join('');
-}
 // 한 세트행의 총 볼륨(kg 환산 무게 × 세트 × 횟수). 무게나 횟수가 없으면(맨몸 운동 등) 0.
 function rowVolumeKg(r){
   const wKg=weightToKg(r.weight);
@@ -1785,13 +1742,54 @@ function weekEnd(wkStartStr){
   d.setDate(d.getDate()+6);
   return localDateStr(d);
 }
+// 주간 요약 한 섹션을 그리는 공용 로직: weekMap({주시작:합계}) + 주별 로그 개수를 받아
+// 평균/합계 표시 방식(mode)에 따라 차트+목록을 렌더링
+function renderWeekSection_(ids, weekMap, weekCounts, opts){
+  const sub=document.getElementById(ids.sub);
+  const svg=document.getElementById(ids.svg);
+  const pts=document.getElementById(ids.pts);
+  const weeks=Object.keys(weekMap).sort();
+  if(!weeks.length){
+    sub.textContent='';
+    svg.style.display='none';
+    pts.innerHTML=`<div class="empty" style="padding:16px 0">${opts.emptyMsg}</div>`;
+    return;
+  }
+  sub.textContent=`총 ${weeks.length}주 · ${weeks[0]} → ${weeks[weeks.length-1]} ${opts.subSuffix}`;
+  const valueOf=wk=> opts.average ? weekMap[wk]/weekCounts[wk] : weekMap[wk];
+  const chartData=weeks.map(wk=>({date:wk, wNum:Math.round(valueOf(wk)*10)/10, src:'personal'}));
+  if(chartData.length>=2){ svg.style.display='block'; drawChart(chartData, ids.svg, ids.scroll, opts.unit); }
+  else svg.style.display='none';
+  const maxV=Math.max(...chartData.map(d=>d.wNum),1);
+  // 최신 주가 맨 위로 오게 내림차순으로 표시
+  pts.innerHTML=weeks.slice().reverse().map(wk=>{
+    const v=Math.round(valueOf(wk)*10)/10;
+    const pct=Math.round((v/maxV)*100);
+    return `<div class="tp-row-vol">
+      <div class="tp-vol-date">${wk} ~ ${weekEnd(wk)}</div>
+      <div class="tp-vol-bar-line">
+        <div class="tp-bar-wrap"><div class="tp-bar" style="width:${pct}%"></div></div>
+        <span class="tp-val">${v.toLocaleString()}${opts.unit}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+function renderWeightWeeklyAvg(){
+  const weekMap={}, weekCounts={};
+  WEIGHT_DB.forEach(w=>{
+    const kg=weightToKg(w.weight);
+    if(kg===null) return;
+    const wk=weekStart(w.date);
+    weekMap[wk]=(weekMap[wk]||0)+kg;
+    weekCounts[wk]=(weekCounts[wk]||0)+1;
+  });
+  renderWeekSection_(
+    {sub:'wavg-subtitle', svg:'wavg-svg', scroll:'wavg-scroll', pts:'wavg-points'},
+    weekMap, weekCounts,
+    {average:true, unit:'kg', subSuffix:'(월요일 시작 기준, 그 주 평균)', emptyMsg:'체중 기록이 아직 없어요.'}
+  );
+}
 function renderWeeklyVolume(){
-  const title=document.getElementById('trend-title');
-  const sub=document.getElementById('trend-subtitle');
-  const svg=document.getElementById('trend-svg');
-  const pts=document.getElementById('trend-points');
-  title.textContent='주간 총 볼륨'; title.style.color='var(--ink)';
-
   const weekMap={};
   DB.forEach(s=>{
     if(s.src==='planned') return; // 아직 안 한 예정 기록은 실제 볼륨에서 제외
@@ -1799,77 +1797,40 @@ function renderWeeklyVolume(){
     s.exercises.forEach(e=>exRows(e).forEach(r=>{ sessionVol+=rowVolumeKg(r); }));
     if(sessionVol>0){ const wk=weekStart(s.date); weekMap[wk]=(weekMap[wk]||0)+sessionVol; }
   });
-  const weeks=Object.keys(weekMap).sort();
-  if(!weeks.length){
-    sub.textContent='';
-    svg.style.display='none';
-    pts.innerHTML='<div class="empty" style="padding:20px 0">무게·세트·횟수가 함께 기록된 운동이 아직 없어요.</div>';
-    return;
-  }
-  sub.textContent=`총 ${weeks.length}주 · ${weeks[0]} → ${weeks[weeks.length-1]} (월요일 시작 기준, kg 환산 합계)`;
-  const chartData=weeks.map(wk=>({date:wk, wNum:Math.round(weekMap[wk]), src:'personal'}));
-  if(chartData.length>=2){ svg.style.display='block'; drawChart(chartData); }
-  else svg.style.display='none';
-  const maxV=Math.max(...weeks.map(wk=>weekMap[wk]),1);
-  // 최신 주가 맨 위로 오게 내림차순으로 표시
-  pts.innerHTML=weeks.slice().reverse().map(wk=>{
-    const v=weekMap[wk];
-    const pct=Math.round((v/maxV)*100);
-    return `<div class="tp-row-vol">
-      <div class="tp-vol-date">${wk} ~ ${weekEnd(wk)}</div>
-      <div class="tp-vol-bar-line">
-        <div class="tp-bar-wrap"><div class="tp-bar" style="width:${pct}%"></div></div>
-        <span class="tp-val">${Math.round(v).toLocaleString()}kg</span>
-      </div>
-    </div>`;
-  }).join('');
+  renderWeekSection_(
+    {sub:'vol-subtitle', svg:'vol-svg', scroll:'vol-scroll', pts:'vol-points'},
+    weekMap, null,
+    {average:false, unit:'kg', subSuffix:'(월요일 시작 기준, kg 환산 합계)', emptyMsg:'무게·세트·횟수가 함께 기록된 운동이 아직 없어요.'}
+  );
 }
-function renderTrend(){
-  const name=document.getElementById('trend-ex').value;
-  if(name==='__volume__'){ renderWeeklyVolume(); return; }
-  if(name==='__weight__'){ renderWeightTrend(); return; }
-  const title=document.getElementById('trend-title');
-  const sub=document.getElementById('trend-subtitle');
-  const svg=document.getElementById('trend-svg');
-  const pts=document.getElementById('trend-points');
-  if(!name){
-    title.textContent='운동을 선택하면 추이가 표시됩니다.';
-    title.style.color='var(--ink3)';
-    sub.textContent='';svg.style.display='none';pts.innerHTML='';return;
-  }
-  const records=[];
-  DB.forEach(s=>s.exercises.forEach(e=>{
-    if(e.name!==name) return;
-    // 가장 무거운 세트를 대표값으로 사용 (kg 환산 기준으로 비교 — lbs 기록도 올바르게 비교되게)
-    let best=null, bestN=null;
-    exRows(e).forEach(r=>{ const nn=weightToKg(r.weight); if(nn!==null && (bestN===null||nn>bestN)){ bestN=nn; best=r; } });
-    const rr=best||exRows(e)[0]||{};
-    records.push({date:s.date,weight:rr.weight||'',wNum:bestN,sets:rr.sets||'',reps:rr.reps||'',rir:rr.rir||'',note:e.note,src:s.src});
-  }));
-  records.sort((a,b)=>a.date.localeCompare(b.date));
-  title.textContent=name; title.style.color='var(--ink)';
-  sub.textContent=`총 ${records.length}회 · ${records[0].date} → ${records[records.length-1].date}`;
-  const chartPts=records.filter(r=>r.wNum!==null);
-  if(chartPts.length>=2){svg.style.display='block';drawChart(chartPts);}
-  else svg.style.display='none';
-  const maxW=Math.max(...records.map(r=>r.wNum||0),1);
-  pts.innerHTML=records.map(r=>{
-    const pct=r.wNum?Math.round((r.wNum/maxW)*100):0;
-    const col=r.src==='planned'?'#997300':r.src==='personal'?'#2d5a3d':'#c8a060';
-    const dot=`<span style="width:7px;height:7px;border-radius:50%;background:${col};flex-shrink:0;display:inline-block"></span>`;
-    const noteFlat=r.note?escHtml(r.note).replace(/\n+/g,' '):'';
-    const detail=[r.sets&&r.sets+'세트',r.reps&&r.reps+'회',r.rir&&'RIR '+r.rir,noteFlat].filter(Boolean).join(' ');
-    return `<div class="tp-row">
-      <span class="tp-date">${r.date.slice(5)}</span>${dot}
-      <div class="tp-bar-wrap"><div class="tp-bar" style="width:${pct}%;background:${col}"></div></div>
-      <span class="tp-val">${r.weight?displayWeight(r.weight):'—'}</span>
-      <span class="tp-note">${detail}</span>
-    </div>`;
-  }).join('');
+function renderCalorieWeeklyAvg(){
+  // 하루에 식단 기록이 여러 건이면(같은 날 두 번 저장 등) 그 날짜 안에서 먼저 합산
+  const dayMap={};
+  MEAL_DB.forEach(m=>{
+    const total=m.meals.reduce((s,x)=>s+(parseFloat(x.calories)||0),0);
+    if(total>0) dayMap[m.date]=(dayMap[m.date]||0)+total;
+  });
+  const weekMap={}, weekCounts={};
+  Object.keys(dayMap).forEach(date=>{
+    const wk=weekStart(date);
+    weekMap[wk]=(weekMap[wk]||0)+dayMap[date];
+    weekCounts[wk]=(weekCounts[wk]||0)+1; // 그 주에 기록이 있었던 '일수'
+  });
+  renderWeekSection_(
+    {sub:'cal-subtitle', svg:'cal-svg', scroll:'cal-scroll', pts:'cal-points'},
+    weekMap, weekCounts,
+    {average:true, unit:'kcal', subSuffix:'(월요일 시작 기준, 기록된 날의 하루 평균)', emptyMsg:'칼로리가 기록된 식단이 아직 없어요.'}
+  );
 }
-function drawChart(data){
-  const scrollWrap=document.getElementById('trend-chart-scroll');
-  const svg=document.getElementById('trend-svg');
+function renderTrendSummary(){
+  renderWeightWeeklyAvg();
+  renderWeeklyVolume();
+  renderCalorieWeeklyAvg();
+}
+function drawChart(data, svgId, scrollId, unit){
+  svgId=svgId||'trend-svg'; scrollId=scrollId||'trend-chart-scroll'; unit=unit||'kg';
+  const scrollWrap=document.getElementById(scrollId);
+  const svg=document.getElementById(svgId);
   const H=170,P={t:16,r:16,b:28,l:32};
   const PER_POINT=56; // 포인트 사이 최소 간격(px) — 많아지면 이 너비만큼 넓어져 가로 스크롤됨
   const containerW=(scrollWrap&&scrollWrap.clientWidth)||340;
@@ -1893,18 +1854,18 @@ function drawChart(data){
   const xLabels=data.map((d,i)=>
     `<text x="${xs(i)}" y="${H-2}" text-anchor="middle" font-size="8" font-family="IBM Plex Mono,monospace" fill="#8a8a84">${d.date.slice(5)}</text>`
   ).join('');
-  svg.innerHTML=`<defs><linearGradient id="tg" x1="0" y1="0" x2="0" y2="1">
+  svg.innerHTML=`<defs><linearGradient id="tg-${svgId}" x1="0" y1="0" x2="0" y2="1">
     <stop offset="0%" stop-color="#2d5a3d" stop-opacity=".18"/>
     <stop offset="100%" stop-color="#2d5a3d" stop-opacity=".02"/>
   </linearGradient></defs>
   <line x1="${P.l}" y1="${P.t}" x2="${P.l}" y2="${P.t+iH}" stroke="#ddd8ce" stroke-width="1"/>
   <line x1="${P.l}" y1="${P.t+iH}" x2="${P.l+iW}" y2="${P.t+iH}" stroke="#ddd8ce" stroke-width="1"/>
-  <path d="${area}" fill="url(#tg)"/>
+  <path d="${area}" fill="url(#tg-${svgId})"/>
   <path d="${path}" fill="none" stroke="#2d5a3d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
   ${circles}${xLabels}
   <text x="${P.l-4}" y="${P.t+5}" text-anchor="end" font-size="8" font-family="IBM Plex Mono,monospace" fill="#8a8a84">${Math.round(maxV)}</text>
   <text x="${P.l-4}" y="${P.t+iH+3}" text-anchor="end" font-size="8" font-family="IBM Plex Mono,monospace" fill="#8a8a84">${Math.round(minV)}</text>
-  <text x="${P.l}" y="${P.t-5}" font-size="7.5" font-family="IBM Plex Mono,monospace" fill="#8a8a84">kg</text>`;
+  <text x="${P.l}" y="${P.t-5}" font-size="7.5" font-family="IBM Plex Mono,monospace" fill="#8a8a84">${unit}</text>`;
   // 최신 데이터(맨 오른쪽)가 보이는 위치로 스크롤 (레이아웃 반영 후 실행되게 다음 프레임에)
   if(scrollWrap) requestAnimationFrame(()=>{ scrollWrap.scrollLeft=scrollWrap.scrollWidth; });
 }
@@ -2029,7 +1990,7 @@ async function saveSyncSettings(){
   } else if(localN>0){
     saveDB();
   }
-  updateSyncBtn(); closeModal(); renderLog(); renderWeightLog(); renderMealLog(); populateTrendSelect();
+  updateSyncBtn(); closeModal(); renderLog(); renderWeightLog(); renderMealLog(); renderTrendSummary();
   toast('✓ 클라우드 동기화 연결됨');
 }
 
@@ -2038,7 +1999,7 @@ async function pullFromCloud(){
   try {
     const cloud=await cloudLoad();
     applyCloudData_(cloud);
-    closeModal(); renderLog(); renderWeightLog(); renderMealLog(); populateTrendSelect();
+    closeModal(); renderLog(); renderWeightLog(); renderMealLog(); renderTrendSummary();
     toast(`✓ 클라우드에서 세션 ${DB.length}개 · 체중 ${WEIGHT_DB.length}개 · 식단 ${MEAL_DB.length}개 불러옴`);
   } catch(e){
     syncStatus('✗ 실패: '+e.message,'err');
