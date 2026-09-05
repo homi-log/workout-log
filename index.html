@@ -302,6 +302,7 @@ svg#trend-svg{height:180px;display:block}
       </div>
       <div class="field" style="margin-bottom:14px"><label>메모</label><textarea id="w-memo" placeholder="예: 아침 공복" rows="1" oninput="autoGrow(this)"></textarea></div>
       <div class="form-actions">
+        <button class="btn btn-ghost" onclick="openWeightImport()">CSV 가져오기</button>
         <button class="btn btn-ghost" onclick="clearWeightForm()">초기화</button>
         <button class="btn btn-primary" onclick="saveWeightEntry()">저장</button>
       </div>
@@ -1411,6 +1412,72 @@ function openEditWeight(id){
     <div class="field" style="margin-top:10px"><label>메모</label><textarea id="edit-w-memo" rows="1" oninput="autoGrow(this)">${escHtml(w.memo||'')}</textarea></div>`;
   document.getElementById('modal-overlay').classList.add('show');
   autoGrow(document.getElementById('edit-w-memo'));
+}
+
+// 인바디 등 체성분계에서 내보낸 CSV를 붙여넣어 체중 기록을 일괄 등록
+function openWeightImport(){
+  document.getElementById('modal-body').innerHTML=`
+    <p style="font-size:.8rem;color:var(--ink2);margin-bottom:10px;line-height:1.5">
+      인바디 등 체성분 측정기에서 내보낸 CSV를 그대로 붙여넣으세요.<br>
+      날짜·체중(kg)·체지방률(%) 컬럼을 자동으로 인식해서 가져옵니다. 이미 있는 날짜+체중 조합은 건너뜁니다.
+    </p>
+    <textarea id="weight-import-text" placeholder="날짜,측정장비,체중(kg),... 를 그대로 붙여넣으세요"
+      style="width:100%;height:160px;font-family:var(--mono);font-size:.7rem;padding:10px;border:1px solid var(--rule);border-radius:8px;background:#fff;color:var(--ink);resize:vertical"></textarea>
+    <div id="weight-import-status" style="font-size:.72rem;color:var(--ink3);margin:8px 0 0;min-height:18px"></div>
+    <button class="btn btn-primary" style="margin-top:6px;width:100%" onclick="importWeightCSV()">가져오기</button>`;
+  document.querySelector('#modal h2').textContent='체중 CSV로 가져오기';
+  document.querySelector('.modal-actions').style.display='none';
+  document.getElementById('modal-overlay').classList.add('show');
+}
+// CSV 한 줄을 체중 기록 하나로 파싱. 날짜(YYYYMMDD...)로 시작하지 않는 줄(헤더 등)은 건너뜀.
+// 컬럼 순서(인바디 내보내기 기준): 날짜,측정장비,체중(kg),골격근량(kg),근육량(kg),체지방량(kg),BMI,체지방률(%),기초대사량(kcal),인바디점수,...
+function parseInBodyCSV(text){
+  const lines=String(text).split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const entries=[];
+  lines.forEach(line=>{
+    const cols=line.split(',').map(c=>c.trim());
+    const m=(cols[0]||'').match(/^(\d{4})(\d{2})(\d{2})\d*$/);
+    if(!m) return; // 헤더 줄이거나 형식이 다르면 건너뜀
+    const weightNum=parseFloat(cols[2]);
+    if(isNaN(weightNum) || weightNum<=0) return;
+    const bodyFatNum=parseFloat(cols[7]);
+    const memoBits=[];
+    if(cols[3] && cols[3]!=='-') memoBits.push(`골격근량 ${cols[3]}kg`);
+    if(cols[6] && cols[6]!=='-') memoBits.push(`BMI ${cols[6]}`);
+    if(cols[8] && cols[8]!=='-') memoBits.push(`기초대사량 ${cols[8]}kcal`);
+    if(cols[9] && cols[9]!=='-') memoBits.push(`인바디점수 ${cols[9]}`);
+    entries.push({
+      date:`${m[1]}-${m[2]}-${m[3]}`,
+      weight:weightNum+'kg',
+      bodyFat:(!isNaN(bodyFatNum) && cols[7]!=='-') ? String(bodyFatNum) : '',
+      memo:memoBits.join(' · ')
+    });
+  });
+  return entries;
+}
+function importWeightCSV(){
+  const text=document.getElementById('weight-import-text').value;
+  const statusEl=document.getElementById('weight-import-status');
+  const parsed=parseInBodyCSV(text);
+  if(!parsed.length){
+    statusEl.style.color='var(--warn)';
+    statusEl.textContent='인식된 항목이 없어요. 형식을 확인해주세요.';
+    return;
+  }
+  const existingKeys=new Set(WEIGHT_DB.map(w=>w.date+'|'+w.weight));
+  let added=0, skipped=0;
+  parsed.forEach(e=>{
+    const key=e.date+'|'+e.weight;
+    if(existingKeys.has(key)){ skipped++; return; }
+    existingKeys.add(key);
+    WEIGHT_DB.push({id:uid(), date:e.date, weight:e.weight, bodyFat:e.bodyFat, memo:e.memo});
+    added++;
+  });
+  if(added>0) saveDB();
+  renderWeightLog();
+  statusEl.style.color='var(--accent)';
+  statusEl.textContent=`✓ ${added}개 추가됨 (중복 ${skipped}개는 건너뜀)`;
+  if(added>0) setTimeout(()=>{ closeModal(); toast(`✓ 체중 ${added}개를 가져왔어요.`); }, 900);
 }
 
 // ══════════════════════════════════
