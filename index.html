@@ -188,6 +188,23 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:3
 .tp-bar-wrap{flex:1;height:5px;background:var(--bg);border-radius:3px;overflow:hidden}
 .tp-bar{height:100%;border-radius:3px;background:var(--accent)}
 .tp-val{font-family:var(--mono);width:60px;text-align:right;font-size:.72rem;color:var(--accent);flex-shrink:0}
+/* 추이 - 목표 설정 입력줄 */
+.trend-goal-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px dashed var(--rule)}
+.trend-goal-row label{display:flex;flex-direction:column;gap:3px;font-family:var(--mono);font-size:.58rem;letter-spacing:.05em;color:var(--ink3);text-transform:uppercase}
+.trend-goal-row input{font-family:var(--mono);font-size:.75rem;padding:6px 8px;border:1px solid var(--rule);border-radius:6px;background:#fff;color:var(--ink);outline:none;width:60px;text-transform:none;letter-spacing:0}
+.trend-goal-row input:focus{border-color:var(--accent)}
+.goal-range{display:flex;align-items:center;gap:4px;color:var(--ink3);font-family:var(--mono);font-size:.7rem}
+.goal-range input{width:40px}
+/* 추이 - 범례 */
+.trend-legend{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:10px;font-family:var(--mono);font-size:.62rem;color:var(--ink2)}
+.trend-legend-item{display:flex;align-items:center;gap:5px}
+.trend-legend-swatch{width:10px;height:10px;border-radius:50%;flex-shrink:0;display:inline-block}
+.trend-legend-swatch.line{border-radius:2px;height:3px;width:14px}
+.trend-legend-swatch.dash{border-radius:0;height:0;width:14px;border-top:2px dashed;background:none!important}
+/* 추이 - 목록 접기/펼치기 토글, 요약 박스 */
+.trend-toggle-btn{font-family:var(--mono);font-size:.65rem;color:var(--ink2);background:none;border:1px dashed var(--rule);border-radius:6px;padding:7px;cursor:pointer;width:100%;margin-top:14px}
+.trend-toggle-btn:active{background:var(--accent-light);color:var(--accent);border-color:var(--accent)}
+.trend-summary-box{font-family:var(--mono);font-size:.68rem;color:var(--ink2);background:var(--bg);border-radius:8px;padding:9px 11px;margin-top:10px;line-height:1.6}
 /* 주간 총 볼륨 목록 (날짜 범위를 온전히 보여주려고 날짜를 별도 줄에 표시) */
 .tp-row-vol{margin-bottom:2px}
 .tp-vol-date{font-family:var(--mono);font-size:.68rem;color:var(--ink3);margin-bottom:4px}
@@ -318,6 +335,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:3
       <div class="ex-inputs" id="meal-inputs"></div>
       <button class="add-ex-btn" onclick="addMealRow(null,document.getElementById('meal-inputs'))">＋ 식사 추가</button>
       <div class="form-actions">
+        <button class="btn btn-ghost" onclick="openCalorieImport()">칼로리 CSV 가져오기</button>
         <button class="btn btn-ghost" onclick="clearMealForm()">초기화</button>
         <button class="btn btn-primary" onclick="saveMealEntry()">저장</button>
       </div>
@@ -328,22 +346,37 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:3
   <!-- 추이 분석 -->
   <div class="panel" id="panel-trend">
     <div class="trend-section">
-      <div class="trend-section-title">⚖️ 체중 주간 평균</div>
-      <div class="trend-subtitle-text" id="wavg-subtitle"></div>
-      <div class="trend-chart-scroll" id="wavg-scroll"><svg id="wavg-svg" class="trend-svg" style="display:none"></svg></div>
-      <div class="trend-points-list" id="wavg-points"></div>
+      <div class="trend-section-title">⚖️ 체중 &amp; 체지방률</div>
+      <div class="trend-goal-row">
+        <label>목표 체중(kg)<input type="text" id="goal-weight" inputmode="decimal" placeholder="예: 58" onchange="saveWeightGoalFromInputs()"></label>
+        <label>목표 체지방률(%)<input type="text" id="goal-bodyfat" inputmode="decimal" placeholder="예: 25" onchange="saveWeightGoalFromInputs()"></label>
+      </div>
+      <div class="trend-subtitle-text" id="wfat-subtitle"></div>
+      <div class="trend-chart-scroll" id="wfat-scroll"><svg id="wfat-svg" class="trend-svg" style="display:none"></svg></div>
+      <div class="trend-legend" id="wfat-legend"></div>
+      <button type="button" class="trend-toggle-btn" onclick="toggleTrendList('wfat-points')">목록 펼치기 ▾</button>
+      <div class="trend-points-list" id="wfat-points" style="display:none"></div>
     </div>
     <div class="trend-section">
       <div class="trend-section-title">📊 주간 총 볼륨</div>
       <div class="trend-subtitle-text" id="vol-subtitle"></div>
       <div class="trend-chart-scroll" id="vol-scroll"><svg id="vol-svg" class="trend-svg" style="display:none"></svg></div>
-      <div class="trend-points-list" id="vol-points"></div>
+      <button type="button" class="trend-toggle-btn" onclick="toggleTrendList('vol-points')">목록 펼치기 ▾</button>
+      <div class="trend-points-list" id="vol-points" style="display:none"></div>
     </div>
     <div class="trend-section">
-      <div class="trend-section-title">🍽 주간 평균 칼로리</div>
+      <div class="trend-section-title">🍽 칼로리 데피싯 추적</div>
+      <div class="trend-goal-row">
+        <label>유지칼로리<input type="text" id="goal-tdee" inputmode="numeric" placeholder="2107" onchange="saveCalorieGoalFromInputs()"></label>
+        <label>훈련일 목표%<span class="goal-range"><input type="text" id="goal-train-min" inputmode="numeric" placeholder="24" onchange="saveCalorieGoalFromInputs()">~<input type="text" id="goal-train-max" inputmode="numeric" placeholder="29" onchange="saveCalorieGoalFromInputs()"></span></label>
+        <label>비훈련일 목표%<span class="goal-range"><input type="text" id="goal-rest-min" inputmode="numeric" placeholder="34" onchange="saveCalorieGoalFromInputs()">~<input type="text" id="goal-rest-max" inputmode="numeric" placeholder="38" onchange="saveCalorieGoalFromInputs()"></span></label>
+      </div>
       <div class="trend-subtitle-text" id="cal-subtitle"></div>
       <div class="trend-chart-scroll" id="cal-scroll"><svg id="cal-svg" class="trend-svg" style="display:none"></svg></div>
-      <div class="trend-points-list" id="cal-points"></div>
+      <div class="trend-legend" id="cal-legend"></div>
+      <div class="trend-summary-box" id="cal-summary"></div>
+      <button type="button" class="trend-toggle-btn" onclick="toggleTrendList('cal-points')">목록 펼치기 ▾</button>
+      <div class="trend-points-list" id="cal-points" style="display:none"></div>
     </div>
   </div>
 </div>
@@ -426,7 +459,9 @@ function normalizeDB(){
 // ── 체중 / 식단 데이터 정규화 ──
 function normalizeWeightEntry(w){
   if(!w || typeof w!=='object' || !w.date) return null;
-  return { id:w.id||uid(), date:String(w.date), weight:stampLegacyWeight(String(w.weight||'')), bodyFat:w.bodyFat!=null?String(w.bodyFat):'', memo:w.memo?String(w.memo):'' };
+  // source: 'inbody'(체성분계) | 'daily'(일별 체중계·헬스앱) | ''(수동 입력) — 체중 차트에서 종류별로 구분 표시하는 데 씀
+  const source = w.source==='inbody' || w.source==='daily' ? w.source : '';
+  return { id:w.id||uid(), date:String(w.date), weight:stampLegacyWeight(String(w.weight||'')), bodyFat:w.bodyFat!=null?String(w.bodyFat):'', memo:w.memo?String(w.memo):'', source };
 }
 function normalizeMealItem(x){
   if(!x || typeof x!=='object') x={};
@@ -1413,14 +1448,14 @@ function openEditWeight(id){
   autoGrow(document.getElementById('edit-w-memo'));
 }
 
-// 인바디 등 체성분계에서 내보낸 CSV를 붙여넣어 체중 기록을 일괄 등록
+// 인바디(체성분계) CSV 또는 일별 체중(체중계·헬스앱) CSV를 붙여넣어 체중 기록을 일괄 등록. 형식은 자동 인식.
 function openWeightImport(){
   document.getElementById('modal-body').innerHTML=`
     <p style="font-size:.8rem;color:var(--ink2);margin-bottom:10px;line-height:1.5">
-      인바디 등 체성분 측정기에서 내보낸 CSV를 그대로 붙여넣으세요.<br>
-      날짜·체중(kg)·체지방률(%) 컬럼을 자동으로 인식해서 가져옵니다. 이미 있는 날짜+체중 조합은 건너뜁니다.
+      인바디 등 체성분 측정기 CSV, 또는 체중계·헬스앱에서 내보낸 일별 체중 CSV를 그대로 붙여넣으세요.<br>
+      형식을 자동으로 인식해서 가져옵니다. 이미 있는 날짜+체중 조합은 건너뜁니다.
     </p>
-    <textarea id="weight-import-text" placeholder="날짜,측정장비,체중(kg),... 를 그대로 붙여넣으세요"
+    <textarea id="weight-import-text" placeholder="CSV 내용을 그대로 붙여넣으세요"
       style="width:100%;height:160px;font-family:var(--mono);font-size:.7rem;padding:10px;border:1px solid var(--rule);border-radius:8px;background:#fff;color:var(--ink);resize:vertical"></textarea>
     <div id="weight-import-status" style="font-size:.72rem;color:var(--ink3);margin:8px 0 0;min-height:18px"></div>
     <button class="btn btn-primary" style="margin-top:6px;width:100%" onclick="importWeightCSV()">가져오기</button>`;
@@ -1428,36 +1463,56 @@ function openWeightImport(){
   document.querySelector('.modal-actions').style.display='none';
   document.getElementById('modal-overlay').classList.add('show');
 }
-// CSV 한 줄을 체중 기록 하나로 파싱. 날짜(YYYYMMDD...)로 시작하지 않는 줄(헤더 등)은 건너뜀.
-// 컬럼 순서(인바디 내보내기 기준): 날짜,측정장비,체중(kg),골격근량(kg),근육량(kg),체지방량(kg),BMI,체지방률(%),기초대사량(kcal),인바디점수,...
-function parseInBodyCSV(text){
+// CSV 한 줄을 체중 기록 하나로 파싱. 두 형식을 자동 인식:
+//  A) 인바디 등 체성분계: 날짜가 YYYYMMDDhhmmss, 체중=3번째 컬럼, 체지방률(%)=8번째 컬럼
+//  B) 일별 체중(체중계/헬스앱): 날짜가 M/D/YYYY 또는 YYYY-MM-DD, 체중(kg)은 보통 마지막 숫자 컬럼
+function parseWeightCSV(text){
   const lines=String(text).split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
   const entries=[];
   lines.forEach(line=>{
     const cols=line.split(',').map(c=>c.trim());
-    const m=(cols[0]||'').match(/^(\d{4})(\d{2})(\d{2})\d*$/);
-    if(!m) return; // 헤더 줄이거나 형식이 다르면 건너뜀
-    const weightNum=parseFloat(cols[2]);
-    if(isNaN(weightNum) || weightNum<=0) return;
-    const bodyFatNum=parseFloat(cols[7]);
-    const memoBits=[];
-    if(cols[3] && cols[3]!=='-') memoBits.push(`골격근량 ${cols[3]}kg`);
-    if(cols[6] && cols[6]!=='-') memoBits.push(`BMI ${cols[6]}`);
-    if(cols[8] && cols[8]!=='-') memoBits.push(`기초대사량 ${cols[8]}kcal`);
-    if(cols[9] && cols[9]!=='-') memoBits.push(`인바디점수 ${cols[9]}`);
-    entries.push({
-      date:`${m[1]}-${m[2]}-${m[3]}`,
-      weight:weightNum+'kg',
-      bodyFat:(!isNaN(bodyFatNum) && cols[7]!=='-') ? String(bodyFatNum) : '',
-      memo:memoBits.join(' · ')
-    });
+    // A) 인바디 형식
+    const inbodyDate=(cols[0]||'').match(/^(\d{4})(\d{2})(\d{2})\d*$/);
+    if(inbodyDate && cols.length>=8){
+      const weightNum=parseFloat(cols[2]);
+      if(!isNaN(weightNum) && weightNum>0){
+        const bodyFatNum=parseFloat(cols[7]);
+        const memoBits=[];
+        if(cols[3] && cols[3]!=='-') memoBits.push(`골격근량 ${cols[3]}kg`);
+        if(cols[6] && cols[6]!=='-') memoBits.push(`BMI ${cols[6]}`);
+        if(cols[8] && cols[8]!=='-') memoBits.push(`기초대사량 ${cols[8]}kcal`);
+        if(cols[9] && cols[9]!=='-') memoBits.push(`인바디점수 ${cols[9]}`);
+        entries.push({
+          date:`${inbodyDate[1]}-${inbodyDate[2]}-${inbodyDate[3]}`,
+          weight:weightNum+'kg',
+          bodyFat:(!isNaN(bodyFatNum) && cols[7]!=='-') ? String(bodyFatNum) : '',
+          memo:memoBits.join(' · '),
+          source:'inbody'
+        });
+        return;
+      }
+    }
+    // B) 일별 체중 형식
+    const usDate=(cols[0]||'').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    const isoDate=(cols[0]||'').match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    let dateStr=null;
+    if(usDate) dateStr=`${usDate[3]}-${usDate[1].padStart(2,'0')}-${usDate[2].padStart(2,'0')}`;
+    else if(isoDate) dateStr=`${isoDate[1]}-${isoDate[2].padStart(2,'0')}-${isoDate[3].padStart(2,'0')}`;
+    if(dateStr && cols.length>=2){
+      let weightNum=null;
+      for(let i=cols.length-1;i>=1;i--){ // 뒤에서부터 훑어 그럴듯한 kg 값을 체중으로 사용(보통 kg 컬럼이 마지막)
+        const n=parseFloat(cols[i]);
+        if(!isNaN(n) && n>0 && n<400){ weightNum=n; break; }
+      }
+      if(weightNum!==null) entries.push({ date:dateStr, weight:weightNum+'kg', bodyFat:'', memo:'', source:'daily' });
+    }
   });
   return entries;
 }
 function importWeightCSV(){
   const text=document.getElementById('weight-import-text').value;
   const statusEl=document.getElementById('weight-import-status');
-  const parsed=parseInBodyCSV(text);
+  const parsed=parseWeightCSV(text);
   if(!parsed.length){
     statusEl.style.color='var(--warn)';
     statusEl.textContent='인식된 항목이 없어요. 형식을 확인해주세요.';
@@ -1469,7 +1524,7 @@ function importWeightCSV(){
     const key=e.date+'|'+e.weight;
     if(existingKeys.has(key)){ skipped++; return; }
     existingKeys.add(key);
-    WEIGHT_DB.push({id:uid(), date:e.date, weight:e.weight, bodyFat:e.bodyFat, memo:e.memo});
+    WEIGHT_DB.push({id:uid(), date:e.date, weight:e.weight, bodyFat:e.bodyFat, memo:e.memo, source:e.source});
     added++;
   });
   if(added>0) saveDB();
@@ -1552,6 +1607,62 @@ function saveMealEntry(){
   } finally {
     savingMeal=false;
   }
+}
+// FatSecret 등에서 뽑은 "날짜,칼로리" 형태의 텍스트를 붙여넣어 하루 총 칼로리를 일괄 등록
+// (PDF는 브라우저에서 직접 못 읽으니, 날짜/총칼로리만 뽑은 텍스트로 붙여넣는 방식)
+function openCalorieImport(){
+  document.getElementById('modal-body').innerHTML=`
+    <p style="font-size:.8rem;color:var(--ink2);margin-bottom:10px;line-height:1.5">
+      "날짜,칼로리" 형태의 텍스트를 한 줄에 하나씩 붙여넣으세요 (예: 2026-09-01,1443).<br>
+      이미 그 날짜에 식단 기록이 있으면 새로 만들지 않고 "가져온 칼로리" 항목만 추가합니다.
+    </p>
+    <textarea id="calorie-import-text" placeholder="2026-08-31,1489&#10;2026-09-01,1443&#10;..."
+      style="width:100%;height:160px;font-family:var(--mono);font-size:.7rem;padding:10px;border:1px solid var(--rule);border-radius:8px;background:#fff;color:var(--ink);resize:vertical"></textarea>
+    <div id="calorie-import-status" style="font-size:.72rem;color:var(--ink3);margin:8px 0 0;min-height:18px"></div>
+    <button class="btn btn-primary" style="margin-top:6px;width:100%" onclick="importCalorieCSV()">가져오기</button>`;
+  document.querySelector('#modal h2').textContent='칼로리 CSV로 가져오기';
+  document.querySelector('.modal-actions').style.display='none';
+  document.getElementById('modal-overlay').classList.add('show');
+}
+function parseCalorieCSV(text){
+  const lines=String(text).split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const entries=[];
+  lines.forEach(line=>{
+    const cols=line.split(',').map(c=>c.trim());
+    const usDate=(cols[0]||'').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    const isoDate=(cols[0]||'').match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    let dateStr=null;
+    if(usDate) dateStr=`${usDate[3]}-${usDate[1].padStart(2,'0')}-${usDate[2].padStart(2,'0')}`;
+    else if(isoDate) dateStr=`${isoDate[1]}-${isoDate[2].padStart(2,'0')}-${isoDate[3].padStart(2,'0')}`;
+    if(!dateStr) return;
+    const cal=parseFloat(cols[1]);
+    if(isNaN(cal) || cal<=0) return;
+    entries.push({date:dateStr, calories:cal});
+  });
+  return entries;
+}
+function importCalorieCSV(){
+  const text=document.getElementById('calorie-import-text').value;
+  const statusEl=document.getElementById('calorie-import-status');
+  const parsed=parseCalorieCSV(text);
+  if(!parsed.length){
+    statusEl.style.color='var(--warn)';
+    statusEl.textContent='인식된 항목이 없어요. "날짜,칼로리" 형식인지 확인해주세요.';
+    return;
+  }
+  const existingDates=new Set(MEAL_DB.map(m=>m.date));
+  let added=0, skipped=0;
+  parsed.forEach(e=>{
+    if(existingDates.has(e.date)){ skipped++; return; } // 그 날짜에 이미 식단 기록이 있으면 건너뜀(중복/충돌 방지)
+    existingDates.add(e.date);
+    MEAL_DB.push({id:uid(), date:e.date, memo:'', meals:[{type:'가져온 칼로리', food:'', calories:String(e.calories), carbs:'', fat:'', protein:'', memo:''}]});
+    added++;
+  });
+  if(added>0) saveDB();
+  renderMealLog();
+  statusEl.style.color='var(--accent)';
+  statusEl.textContent=`✓ ${added}개 추가됨 (이미 기록 있는 날짜 ${skipped}개는 건너뜀)`;
+  if(added>0) setTimeout(()=>{ closeModal(); toast(`✓ 칼로리 ${added}일치를 가져왔어요.`); }, 900);
 }
 function toggleMealCard(id){ document.getElementById('mcard-'+id)?.classList.toggle('open'); }
 let pendingMealDelete=null;
@@ -1774,20 +1885,179 @@ function renderWeekSection_(ids, weekMap, weekCounts, opts){
     </div>`;
   }).join('');
 }
-function renderWeightWeeklyAvg(){
-  const weekMap={}, weekCounts={};
+// ── 체중/식단 목표 설정 (기기별 localStorage — 기록 데이터와 별개로, 앱을 쓰는 사람마다 다를 수 있는 값) ──
+const WEIGHT_GOAL_KEY='workout_weight_goal';
+const CALORIE_GOAL_KEY='workout_calorie_goal';
+function getWeightGoal(){
+  const defaults={weight:'58', bodyFat:'25'};
+  try { return Object.assign(defaults, JSON.parse(localStorage.getItem(WEIGHT_GOAL_KEY))||{}); }
+  catch(e){ return defaults; }
+}
+function saveWeightGoalFromInputs(){
+  const weight=document.getElementById('goal-weight')?.value.trim()||'';
+  const bodyFat=document.getElementById('goal-bodyfat')?.value.trim()||'';
+  localStorage.setItem(WEIGHT_GOAL_KEY, JSON.stringify({weight,bodyFat}));
+  renderWeightBodyFatChart();
+}
+function getCalorieGoal(){
+  const defaults={tdee:'2107', trainMin:'24', trainMax:'29', restMin:'34', restMax:'38'};
+  try { return Object.assign(defaults, JSON.parse(localStorage.getItem(CALORIE_GOAL_KEY))||{}); }
+  catch(e){ return defaults; }
+}
+function saveCalorieGoalFromInputs(){
+  const g={
+    tdee:document.getElementById('goal-tdee')?.value.trim()||'2107',
+    trainMin:document.getElementById('goal-train-min')?.value.trim()||'24',
+    trainMax:document.getElementById('goal-train-max')?.value.trim()||'29',
+    restMin:document.getElementById('goal-rest-min')?.value.trim()||'34',
+    restMax:document.getElementById('goal-rest-max')?.value.trim()||'38'
+  };
+  localStorage.setItem(CALORIE_GOAL_KEY, JSON.stringify(g));
+  renderCalorieDeficitChart();
+}
+// 입력 중인(포커스된) 칸은 건드리지 않고, 저장된/기본 목표값을 목표 입력칸에 채워넣음
+function populateGoalInputs(){
+  const wg=getWeightGoal();
+  [['goal-weight',wg.weight],['goal-bodyfat',wg.bodyFat]].forEach(([id,v])=>{
+    const el=document.getElementById(id);
+    if(el && document.activeElement!==el) el.value=v;
+  });
+  const cg=getCalorieGoal();
+  [['goal-tdee',cg.tdee],['goal-train-min',cg.trainMin],['goal-train-max',cg.trainMax],['goal-rest-min',cg.restMin],['goal-rest-max',cg.restMax]].forEach(([id,v])=>{
+    const el=document.getElementById(id);
+    if(el && document.activeElement!==el) el.value=v;
+  });
+}
+// 그 날짜에 실제로 수행한(계획 아닌) 운동 세션이 있으면 훈련일로 판정
+function isTrainingDay(date){
+  return DB.some(s=>s.date===date && s.src!=='planned' && Array.isArray(s.exercises) && s.exercises.length>0);
+}
+function toggleTrendList(id){
+  const el=document.getElementById(id);
+  if(!el) return;
+  const btn=el.previousElementSibling;
+  const show=el.style.display==='none';
+  el.style.display=show?'flex':'none';
+  if(btn && btn.classList.contains('trend-toggle-btn')) btn.textContent=show?'목록 접기 ▴':'목록 펼치기 ▾';
+}
+// 체중(일별/InBody 구분) + 체지방률(보조축) 통합 차트
+function renderWeightBodyFatChart(){
+  const sub=document.getElementById('wfat-subtitle');
+  const svg=document.getElementById('wfat-svg');
+  const legend=document.getElementById('wfat-legend');
+  const pts=document.getElementById('wfat-points');
+  const goal=getWeightGoal();
+
+  const dailyPts=[], inbodyPts=[], fatPts=[];
   WEIGHT_DB.forEach(w=>{
     const kg=weightToKg(w.weight);
-    if(kg===null) return;
-    const wk=weekStart(w.date);
-    weekMap[wk]=(weekMap[wk]||0)+kg;
-    weekCounts[wk]=(weekCounts[wk]||0)+1;
+    if(kg!==null) (w.source==='inbody'?inbodyPts:dailyPts).push({date:w.date, kg});
+    const bf=parseFloat(w.bodyFat);
+    if(!isNaN(bf)) fatPts.push({date:w.date, pct:bf});
   });
-  renderWeekSection_(
-    {sub:'wavg-subtitle', svg:'wavg-svg', scroll:'wavg-scroll', pts:'wavg-points'},
-    weekMap, weekCounts,
-    {average:true, unit:'kg', subSuffix:'(월요일 시작 기준, 그 주 평균)', emptyMsg:'체중 기록이 아직 없어요.'}
-  );
+  dailyPts.sort((a,b)=>a.date.localeCompare(b.date));
+  inbodyPts.sort((a,b)=>a.date.localeCompare(b.date));
+  fatPts.sort((a,b)=>a.date.localeCompare(b.date));
+  const allDates=[...new Set([...dailyPts,...inbodyPts,...fatPts].map(p=>p.date))].sort();
+
+  if(!allDates.length){
+    sub.textContent=''; svg.style.display='none'; legend.innerHTML='';
+    pts.innerHTML='<div class="empty" style="padding:16px 0">체중 기록이 아직 없어요.</div>';
+    return;
+  }
+  sub.textContent=`총 ${allDates.length}일 · ${allDates[0]} → ${allDates[allDates.length-1]}`;
+  svg.style.display='block';
+  drawWeightBodyFatSvg(dailyPts, inbodyPts, fatPts, allDates, goal);
+
+  const legendItems=[];
+  if(dailyPts.length) legendItems.push({cls:'line', color:'#a9c9b6', label:'체중(일별)'});
+  if(inbodyPts.length) legendItems.push({cls:'', color:'#1e3d2a', label:'체중(InBody)'});
+  if(fatPts.length) legendItems.push({cls:'line', color:'#c0392b', label:'체지방률(InBody)'});
+  if(goal.weight) legendItems.push({cls:'dash', color:'#7fae8e', label:`체중 목표 ${goal.weight}kg`});
+  if(goal.bodyFat) legendItems.push({cls:'dash', color:'#e0a090', label:`체지방률 목표 ${goal.bodyFat}%`});
+  legend.innerHTML=legendItems.map(it=>{
+    const style = it.cls==='dash' ? `border-top-color:${it.color}` : `background:${it.color}`;
+    return `<span class="trend-legend-item"><span class="trend-legend-swatch ${it.cls}" style="${style}"></span>${escHtml(it.label)}</span>`;
+  }).join('');
+
+  pts.innerHTML=allDates.slice().reverse().map(date=>{
+    const d=dailyPts.find(p=>p.date===date), ib=inbodyPts.find(p=>p.date===date), bf=fatPts.find(p=>p.date===date);
+    const bits=[];
+    if(ib) bits.push(`<span class="ex-chip">InBody ${ib.kg}kg</span>`);
+    if(d) bits.push(`<span class="ex-chip">일별 ${d.kg}kg</span>`);
+    if(bf) bits.push(`<span class="ex-chip">체지방 ${bf.pct}%</span>`);
+    return `<div class="tp-row-vol"><div class="tp-vol-date">${date}</div><div class="tp-vol-bar-line" style="gap:6px;flex-wrap:wrap">${bits.join('')}</div></div>`;
+  }).join('');
+}
+// 체중&체지방률 차트의 실제 SVG 렌더링 (날짜 인덱스 기반 x축 — 값 없는 날은 건너뛰어 선이 안 끊기게)
+function drawWeightBodyFatSvg(dailyPts, inbodyPts, fatPts, allDates, goal){
+  const scrollWrap=document.getElementById('wfat-scroll');
+  const svg=document.getElementById('wfat-svg');
+  const H=214, P={t:26,r:38,b:34,l:34};
+  const PER_POINT=26; // 일별 데이터가 많을 수 있어 조금 촘촘하게
+  const containerW=(scrollWrap&&scrollWrap.clientWidth)||340;
+  const n=allDates.length;
+  const neededW=P.l+P.r+PER_POINT*Math.max(n-1,0);
+  const W=Math.max(containerW,neededW);
+  svg.setAttribute('width',W); svg.setAttribute('height',H);
+  svg.style.width=W+'px'; svg.style.height=H+'px';
+  const iW=W-P.l-P.r, iH=H-P.t-P.b;
+  const dateIdx={}; allDates.forEach((d,i)=>dateIdx[d]=i);
+  const xs=date=> n===1 ? P.l+iW/2 : P.l+dateIdx[date]/(n-1)*iW;
+
+  const goalW=parseFloat(goal.weight), goalF=parseFloat(goal.bodyFat);
+  const allKg=[...dailyPts.map(p=>p.kg), ...inbodyPts.map(p=>p.kg)];
+  if(!isNaN(goalW)) allKg.push(goalW);
+  const kgMin=Math.min(...allKg)*0.97, kgMax=Math.max(...allKg)*1.03;
+  const ysKg=v=>P.t+iH-((v-kgMin)/(kgMax-kgMin||1))*iH;
+
+  const hasFatAxis = fatPts.length>0 || !isNaN(goalF);
+  const allPct=fatPts.map(p=>p.pct);
+  if(!isNaN(goalF)) allPct.push(goalF);
+  const pctMin= hasFatAxis ? Math.min(...allPct)*0.9 : 0;
+  const pctMax= hasFatAxis ? Math.max(...allPct)*1.1 : 100;
+  const ysPct=v=>P.t+iH-((v-pctMin)/(pctMax-pctMin||1))*iH;
+
+  const COL_DAILY='#a9c9b6', COL_INBODY='#1e3d2a', COL_FAT='#c0392b', COL_GOAL_W='#7fae8e', COL_GOAL_F='#e0a090';
+  const linePath=(points,ysFn,key)=> points.length<2 ? '' : points.map((p,i)=>(i===0?'M':'L')+xs(p.date)+','+ysFn(p[key])).join(' ');
+  const dailyPath=linePath(dailyPts,ysKg,'kg');
+  const fatPath=linePath(fatPts,ysPct,'pct');
+  const dailyDots=dailyPts.map(p=>`<circle cx="${xs(p.date)}" cy="${ysKg(p.kg)}" r="2" fill="${COL_DAILY}"/>`).join('');
+  const inbodyDots=inbodyPts.map(p=>`<circle cx="${xs(p.date)}" cy="${ysKg(p.kg)}" r="4" fill="${COL_INBODY}" stroke="#fff" stroke-width="1.3"/>`).join('');
+  const fatDots=fatPts.map(p=>`<circle cx="${xs(p.date)}" cy="${ysPct(p.pct)}" r="3" fill="${COL_FAT}" stroke="#fff" stroke-width="1"/>`).join('');
+
+  const labelStep=Math.max(1, Math.ceil(n/14)); // 라벨이 너무 빽빽해지지 않게 솎아냄
+  const xLabels=allDates.map((d,i)=> i%labelStep===0 ? `<text x="${xs(d)}" y="${H-4}" text-anchor="middle" font-size="7.5" font-family="IBM Plex Mono,monospace" fill="#8a8a84">${d.slice(2)}</text>` : '').join('');
+
+  const goalWeightLine = !isNaN(goalW) ? `<line x1="${P.l}" y1="${ysKg(goalW)}" x2="${P.l+iW}" y2="${ysKg(goalW)}" stroke="${COL_GOAL_W}" stroke-width="1.3" stroke-dasharray="4,3"/>` : '';
+  const goalFatLine = !isNaN(goalF) ? `<line x1="${P.l}" y1="${ysPct(goalF)}" x2="${P.l+iW}" y2="${ysPct(goalF)}" stroke="${COL_GOAL_F}" stroke-width="1.3" stroke-dasharray="4,3"/>` : '';
+
+  const latestKg=[...dailyPts,...inbodyPts].sort((a,b)=>a.date.localeCompare(b.date)).pop();
+  const latestFat=fatPts[fatPts.length-1];
+  const diffParts=[];
+  if(latestKg && !isNaN(goalW)){ const diff=latestKg.kg-goalW; diffParts.push(`체중 ${diff>=0?'-':'+'}${Math.abs(diff).toFixed(1)}kg`); }
+  if(latestFat && !isNaN(goalF)){ const diff=latestFat.pct-goalF; diffParts.push(`체지방률 ${diff>=0?'-':'+'}${Math.abs(diff).toFixed(1)}%p`); }
+  const diffText=diffParts.length ? diffParts.join(' / ')+' 남음' : '';
+
+  svg.innerHTML=`
+    <line x1="${P.l}" y1="${P.t}" x2="${P.l}" y2="${P.t+iH}" stroke="#ddd8ce" stroke-width="1"/>
+    ${hasFatAxis?`<line x1="${P.l+iW}" y1="${P.t}" x2="${P.l+iW}" y2="${P.t+iH}" stroke="#ddd8ce" stroke-width="1"/>`:''}
+    <line x1="${P.l}" y1="${P.t+iH}" x2="${P.l+iW}" y2="${P.t+iH}" stroke="#ddd8ce" stroke-width="1"/>
+    ${goalWeightLine}${goalFatLine}
+    <path d="${dailyPath}" fill="none" stroke="${COL_DAILY}" stroke-width="1.5"/>
+    ${fatPath?`<path d="${fatPath}" fill="none" stroke="${COL_FAT}" stroke-width="1.6"/>`:''}
+    ${dailyDots}${inbodyDots}${fatDots}
+    ${xLabels}
+    <text x="${P.l-6}" y="${P.t+4}" text-anchor="end" font-size="7.5" font-family="IBM Plex Mono,monospace" fill="#8a8a84">${Math.round(kgMax)}</text>
+    <text x="${P.l-6}" y="${P.t+iH+3}" text-anchor="end" font-size="7.5" font-family="IBM Plex Mono,monospace" fill="#8a8a84">${Math.round(kgMin)}</text>
+    <text x="${P.l-4}" y="${P.t-14}" font-size="7" font-family="IBM Plex Mono,monospace" fill="#8a8a84">kg</text>
+    ${hasFatAxis?`
+    <text x="${P.l+iW+6}" y="${P.t+4}" text-anchor="start" font-size="7.5" font-family="IBM Plex Mono,monospace" fill="${COL_FAT}">${Math.round(pctMax)}</text>
+    <text x="${P.l+iW+6}" y="${P.t+iH+3}" text-anchor="start" font-size="7.5" font-family="IBM Plex Mono,monospace" fill="${COL_FAT}">${Math.round(pctMin)}</text>
+    <text x="${P.l+iW+6}" y="${P.t-14}" text-anchor="start" font-size="7" font-family="IBM Plex Mono,monospace" fill="${COL_FAT}">%</text>`:''}
+    ${diffText?`<text x="${P.l+8}" y="${P.t-16}" font-size="8.5" font-family="IBM Plex Mono,monospace" fill="#4a4a46" font-weight="600">${diffText}</text>`:''}
+  `;
+  if(scrollWrap) requestAnimationFrame(()=>{ scrollWrap.scrollLeft=scrollWrap.scrollWidth; });
 }
 function renderWeeklyVolume(){
   const weekMap={};
@@ -1803,29 +2073,125 @@ function renderWeeklyVolume(){
     {average:false, unit:'kg', subSuffix:'(월요일 시작 기준, kg 환산 합계)', emptyMsg:'무게·세트·횟수가 함께 기록된 운동이 아직 없어요.'}
   );
 }
-function renderCalorieWeeklyAvg(){
+// 일별 섭취 칼로리가 유지칼로리 대비 목표 데피싯 구간(훈련일/비훈련일 다름)을 지키고 있는지 추적
+function renderCalorieDeficitChart(){
+  const sub=document.getElementById('cal-subtitle');
+  const svg=document.getElementById('cal-svg');
+  const legend=document.getElementById('cal-legend');
+  const summaryBox=document.getElementById('cal-summary');
+  const pts=document.getElementById('cal-points');
+  const goal=getCalorieGoal();
+  const tdee=parseFloat(goal.tdee)||2107;
+  const trainMin=parseFloat(goal.trainMin)||24, trainMax=parseFloat(goal.trainMax)||29;
+  const restMin=parseFloat(goal.restMin)||34, restMax=parseFloat(goal.restMax)||38;
+
   // 하루에 식단 기록이 여러 건이면(같은 날 두 번 저장 등) 그 날짜 안에서 먼저 합산
   const dayMap={};
   MEAL_DB.forEach(m=>{
     const total=m.meals.reduce((s,x)=>s+(parseFloat(x.calories)||0),0);
     if(total>0) dayMap[m.date]=(dayMap[m.date]||0)+total;
   });
-  const weekMap={}, weekCounts={};
-  Object.keys(dayMap).forEach(date=>{
-    const wk=weekStart(date);
-    weekMap[wk]=(weekMap[wk]||0)+dayMap[date];
-    weekCounts[wk]=(weekCounts[wk]||0)+1; // 그 주에 기록이 있었던 '일수'
+  const dates=Object.keys(dayMap).sort();
+  if(!dates.length){
+    sub.textContent=''; svg.style.display='none'; legend.innerHTML=''; summaryBox.innerHTML='';
+    pts.innerHTML='<div class="empty" style="padding:16px 0">칼로리가 기록된 식단이 아직 없어요.</div>';
+    return;
+  }
+  sub.textContent=`총 ${dates.length}일 · ${dates[0]} → ${dates[dates.length-1]} · 유지칼로리 ${tdee}kcal 기준`;
+
+  const records=dates.map(date=>{
+    const cal=dayMap[date];
+    const deficit=tdee-cal;
+    const pct=Math.round((deficit/tdee)*1000)/10;
+    const training=isTrainingDay(date);
+    const [lo,hi]=training?[trainMin,trainMax]:[restMin,restMax];
+    const status = pct>hi ? '초과 절식' : pct<lo ? '미달' : '적정';
+    return {date, cal, pct, training, status};
   });
-  renderWeekSection_(
-    {sub:'cal-subtitle', svg:'cal-svg', scroll:'cal-scroll', pts:'cal-points'},
-    weekMap, weekCounts,
-    {average:true, unit:'kcal', subSuffix:'(월요일 시작 기준, 기록된 날의 하루 평균)', emptyMsg:'칼로리가 기록된 식단이 아직 없어요.'}
-  );
+
+  svg.style.display='block';
+  drawCalorieDeficitSvg(records, {trainMin,trainMax,restMin,restMax});
+
+  legend.innerHTML=`
+    <span class="trend-legend-item"><span class="trend-legend-swatch" style="background:#2d5a3d"></span>훈련일</span>
+    <span class="trend-legend-item"><span class="trend-legend-swatch" style="background:#997300"></span>비훈련일</span>
+    <span class="trend-legend-item"><span class="trend-legend-swatch line" style="background:#4a4a46"></span>주간 평균</span>
+    <span class="trend-legend-item"><span class="trend-legend-swatch" style="background:transparent;border:2px solid var(--warn)"></span>목표 이탈</span>`;
+
+  const counts={'적정':0,'초과 절식':0,'미달':0};
+  records.forEach(r=>counts[r.status]++);
+  summaryBox.innerHTML=`적정 <b>${counts['적정']}</b>일 · 초과 절식 <b>${counts['초과 절식']}</b>일 · 미달 <b>${counts['미달']}</b>일 (총 ${records.length}일)`;
+
+  pts.innerHTML=records.slice().reverse().map(r=>{
+    const col = r.status==='적정' ? 'var(--accent)' : r.status==='초과 절식' ? 'var(--warn)' : 'var(--plan)';
+    return `<div class="tp-row-vol">
+      <div class="tp-vol-date">${r.date} · ${r.training?'훈련일':'비훈련일'}</div>
+      <div class="tp-vol-bar-line">
+        <span style="font-family:var(--mono);font-size:.72rem;color:${col};font-weight:600;flex-shrink:0">${r.status}</span>
+        <span class="tp-val" style="width:auto">${r.cal.toLocaleString()}kcal (${r.pct}%)</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+function drawCalorieDeficitSvg(records, ranges){
+  const scrollWrap=document.getElementById('cal-scroll');
+  const svg=document.getElementById('cal-svg');
+  const H=210, P={t:16,r:16,b:34,l:32};
+  const PER_POINT=42;
+  const containerW=(scrollWrap&&scrollWrap.clientWidth)||340;
+  const n=records.length;
+  const neededW=P.l+P.r+PER_POINT*Math.max(n-1,0);
+  const W=Math.max(containerW,neededW);
+  svg.setAttribute('width',W); svg.setAttribute('height',H);
+  svg.style.width=W+'px'; svg.style.height=H+'px';
+  const iW=W-P.l-P.r, iH=H-P.t-P.b;
+  const xs=i=> n===1 ? P.l+iW/2 : P.l+i/(n-1)*iW;
+
+  const allBounds=[ranges.trainMin,ranges.trainMax,ranges.restMin,ranges.restMax,...records.map(r=>r.pct)];
+  const yMin=Math.min(...allBounds)-5, yMax=Math.max(...allBounds)+5;
+  const ys=v=>P.t+iH-((v-yMin)/(yMax-yMin||1))*iH;
+
+  const trainBand=`<rect x="${P.l}" y="${ys(ranges.trainMax)}" width="${iW}" height="${Math.max(ys(ranges.trainMin)-ys(ranges.trainMax),0)}" fill="#2d5a3d" opacity="0.10"/>`;
+  const restBand=`<rect x="${P.l}" y="${ys(ranges.restMax)}" width="${iW}" height="${Math.max(ys(ranges.restMin)-ys(ranges.restMax),0)}" fill="#997300" opacity="0.10"/>`;
+
+  // 주간 평균 라인 (그 주에 속한 포인트들의 중간 인덱스에 찍어 이어줌)
+  const weekMap={};
+  records.forEach((r,i)=>{
+    const wk=weekStart(r.date);
+    if(!weekMap[wk]) weekMap[wk]={sum:0,count:0,idxs:[]};
+    weekMap[wk].sum+=r.pct; weekMap[wk].count++; weekMap[wk].idxs.push(i);
+  });
+  const weekAvgPath=Object.keys(weekMap).sort().map((wk,wi)=>{
+    const w=weekMap[wk];
+    const midIdx=w.idxs.reduce((a,b)=>a+b,0)/w.idxs.length;
+    return `${wi===0?'M':'L'}${xs(midIdx)},${ys(w.sum/w.count)}`;
+  }).join(' ');
+
+  const points=records.map((r,i)=>{
+    const outOfRange=r.status!=='적정';
+    const col=r.training?'#2d5a3d':'#997300';
+    const ring=outOfRange?`stroke="var(--warn)" stroke-width="2.5"`:`stroke="#fff" stroke-width="1.3"`;
+    return `<circle cx="${xs(i)}" cy="${ys(r.pct)}" r="5" fill="${col}" ${ring}/>
+      <text x="${xs(i)}" y="${ys(r.pct)-9}" text-anchor="middle" font-size="7.5" font-family="IBM Plex Mono,monospace" fill="#4a4a46">${r.pct}%</text>`;
+  }).join('');
+  const xLabels=records.map((r,i)=>`<text x="${xs(i)}" y="${H-4}" text-anchor="middle" font-size="7.5" font-family="IBM Plex Mono,monospace" fill="#8a8a84">${r.date.slice(5)}</text>`).join('');
+
+  svg.innerHTML=`
+    ${trainBand}${restBand}
+    <line x1="${P.l}" y1="${P.t}" x2="${P.l}" y2="${P.t+iH}" stroke="#ddd8ce" stroke-width="1"/>
+    <line x1="${P.l}" y1="${P.t+iH}" x2="${P.l+iW}" y2="${P.t+iH}" stroke="#ddd8ce" stroke-width="1"/>
+    <path d="${weekAvgPath}" fill="none" stroke="#4a4a46" stroke-width="1.8" stroke-dasharray="5,3"/>
+    ${points}${xLabels}
+    <text x="${P.l-4}" y="${P.t+4}" text-anchor="end" font-size="7.5" font-family="IBM Plex Mono,monospace" fill="#8a8a84">${Math.round(yMax)}%</text>
+    <text x="${P.l-4}" y="${P.t+iH+3}" text-anchor="end" font-size="7.5" font-family="IBM Plex Mono,monospace" fill="#8a8a84">${Math.round(yMin)}%</text>
+  `;
+  if(scrollWrap) requestAnimationFrame(()=>{ scrollWrap.scrollLeft=scrollWrap.scrollWidth; });
 }
 function renderTrendSummary(){
-  renderWeightWeeklyAvg();
+  populateGoalInputs();
+  renderWeightBodyFatChart();
   renderWeeklyVolume();
-  renderCalorieWeeklyAvg();
+  renderCalorieDeficitChart();
 }
 function drawChart(data, svgId, scrollId, unit){
   svgId=svgId||'trend-svg'; scrollId=scrollId||'trend-chart-scroll'; unit=unit||'kg';
@@ -1838,7 +2204,7 @@ function drawChart(data, svgId, scrollId, unit){
   const W=Math.max(containerW,neededW);
   svg.setAttribute('width',W);
   svg.setAttribute('height',H);
-  svg.style.width=W+'px';
+  svg.style.width=W+'px'; svg.style.height=H+'px';
   const iW=W-P.l-P.r,iH=H-P.t-P.b;
   const vals=data.map(d=>d.wNum);
   const minV=Math.min(...vals)*.88,maxV=Math.max(...vals)*1.06;
