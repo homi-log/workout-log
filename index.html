@@ -18,7 +18,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:3
 
 /* 헤더 */
 .app-header{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:2px solid var(--ink);padding-bottom:12px;margin-bottom:24px}
-.app-title{font-size:1.3rem;font-weight:700;letter-spacing:-.02em}
+.app-title{font-size:1.3rem;font-weight:700;letter-spacing:-.02em;white-space:nowrap}
 .app-title span{font-family:var(--mono);font-size:.65rem;color:var(--ink3);display:block;margin-bottom:2px}
 .header-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .fs-pct{font-size:.62rem;color:var(--ink3);margin-left:2px}
@@ -146,6 +146,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:3
 .cond-pill.cond-normal{color:var(--ink3)}
 .cond-pill.cond-normal.active{background:var(--ink2);border-color:var(--ink2);color:#fff}
 .cond-summary-line{margin-top:4px;font-size:.82rem;font-weight:500;color:var(--ink)}
+.meal-deficit-line{margin-top:4px;font-size:.82rem;font-weight:600}
 .form-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
 .field{display:flex;flex-direction:column;gap:4px}
 .field label{font-family:var(--mono);font-size:.62rem;letter-spacing:.07em;color:var(--ink3);text-transform:uppercase}
@@ -285,13 +286,10 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:3
       <button class="btn btn-ghost btn-sm" id="font-scale-btn" onclick="cycleFontScale()" title="글자 크기 조절">
         <span style="font-weight:700">가</span><span class="fs-pct" id="font-scale-pct">100%</span>
       </button>
-      <button class="btn btn-ghost btn-sm" id="sync-btn" onclick="openSyncSettings()" title="Google 시트 클라우드 동기화" aria-label="클라우드 동기화">
+      <button class="btn btn-ghost btn-sm" id="sync-btn" onclick="openSyncSettings()" title="Google 시트 클라우드 동기화 · 데이터 백업" aria-label="클라우드 동기화">
         <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
         <span id="sync-check">✓</span>
       </button>
-      <button class="btn btn-ghost btn-sm" onclick="importJSON()" title="JSON 파일에서 불러오기">불러오기</button>
-      <button class="btn btn-ghost btn-sm" onclick="exportCSV()">CSV</button>
-      <button class="btn btn-ghost btn-sm" onclick="exportJSON()">JSON</button>
     </div>
     <input type="file" id="json-file-input" accept=".json,application/json" style="display:none" onchange="handleJSONFile(event)">
   </header>
@@ -383,7 +381,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:3
   <div class="panel" id="panel-meal">
     <div class="form-card">
       <div class="form-actions">
-        <button class="btn btn-primary" style="width:100%" onclick="openCalorieImport()">칼로리 CSV 가져오기</button>
+        <button class="btn btn-primary" style="width:100%" onclick="openCalorieImport()">CSV 가져오기</button>
       </div>
     </div>
     <div class="session-list" id="meal-list"></div>
@@ -1849,7 +1847,7 @@ function openCalorieImport(){
       style="width:100%;height:160px;font-family:var(--mono);font-size:.7rem;padding:10px;border:1px solid var(--rule);border-radius:8px;background:#fff;color:var(--ink);resize:vertical"></textarea>
     <div id="calorie-import-status" style="font-size:.72rem;color:var(--ink3);margin:8px 0 0;min-height:18px"></div>
     <button class="btn btn-primary" style="margin-top:6px;width:100%" onclick="importCalorieCSV()">가져오기</button>`;
-  document.querySelector('#modal h2').textContent='칼로리 CSV로 가져오기';
+  document.querySelector('#modal h2').textContent='CSV로 가져오기';
   document.querySelector('.modal-actions').style.display='none';
   document.getElementById('modal-overlay').classList.add('show');
 }
@@ -2045,7 +2043,16 @@ function renderMealLog(){
   list.innerHTML=sorted.map(m=>{
     const items=m.meals;
     const totalCal=sumField(items,'calories');
-    const preview=[...new Set(items.map(x=>x.type).filter(Boolean))].join(', ');
+    const macroSummary = totalCal>0
+      ? `탄 ${fmtNum(sumField(items,'carbs'))}g · 지 ${fmtNum(sumField(items,'fat'))}g · 단 ${fmtNum(sumField(items,'protein'))}g · ${Math.round(totalCal)}kcal`
+      : '';
+    let deficitLine='';
+    if(totalCal>0){
+      const info=classifyDeficit(m.date, totalCal);
+      const statusColor = info.status==='적정' ? 'var(--accent)' : info.status==='초과 절식' ? 'var(--warn)' : 'var(--plan)';
+      const trainIcon = info.training ? '🏋️' : '🛌';
+      deficitLine = `<div class="session-memo meal-deficit-line" style="color:${statusColor}">${trainIcon} ${info.training?'훈련일':'비훈련일'} 데피싯 ${Math.round(info.deficit)}kcal(${info.pct}%) · ${info.status}</div>`;
+    }
 
     // 끼니(아침/점심/저녁/간식 등)별로 묶어 FatSecret 스타일의 구분된 섹션으로 표시
     const groups=[];
@@ -2094,7 +2101,8 @@ function renderMealLog(){
       <div class="session-head" onclick="toggleMealCard('${m.id}')">
         <div>
           <div class="session-date">${m.date}</div>
-          <div class="session-memo">${preview}${totalCal?` · 총 ${Math.round(totalCal)}kcal`:''}</div>
+          <div class="session-memo">${macroSummary}</div>
+          ${deficitLine}
         </div>
         <span class="session-chevron">▼</span>
       </div>
@@ -2314,6 +2322,20 @@ function populateGoalInputs(){
 function isTrainingDay(date){
   return DB.some(s=>s.date===date && s.src!=='planned' && Array.isArray(s.exercises) && s.exercises.length>0);
 }
+// 그 날짜의 섭취 칼로리를 유지칼로리·훈련일/비훈련일 목표 구간과 비교해 데피싯 상태를 판정
+// (추이 분석의 칼로리 데피싯 차트와 식단 탭 카드 요약에서 공용으로 사용)
+function classifyDeficit(date, cal){
+  const goal=getCalorieGoal();
+  const tdee=parseFloat(goal.tdee)||2107;
+  const trainMin=parseFloat(goal.trainMin)||24, trainMax=parseFloat(goal.trainMax)||29;
+  const restMin=parseFloat(goal.restMin)||34, restMax=parseFloat(goal.restMax)||38;
+  const deficit=tdee-cal;
+  const pct=Math.round((deficit/tdee)*1000)/10;
+  const training=isTrainingDay(date);
+  const [lo,hi]=training?[trainMin,trainMax]:[restMin,restMax];
+  const status = pct>hi ? '초과 절식' : pct<lo ? '미달' : '적정';
+  return {tdee, deficit, pct, training, status};
+}
 function toggleTrendList(id){
   const el=document.getElementById(id);
   if(!el) return;
@@ -2506,11 +2528,7 @@ function renderCalorieDeficitChart(){
 
   const records=dates.map(date=>{
     const cal=dayMap[date];
-    const deficit=tdee-cal;
-    const pct=Math.round((deficit/tdee)*1000)/10;
-    const training=isTrainingDay(date);
-    const [lo,hi]=training?[trainMin,trainMax]:[restMin,restMax];
-    const status = pct>hi ? '초과 절식' : pct<lo ? '미달' : '적정';
+    const {pct, training, status}=classifyDeficit(date, cal);
     return {date, cal, pct, training, status};
   });
 
@@ -2710,6 +2728,14 @@ function openSyncSettings(){
       <button class="btn btn-primary btn-sm" onclick="saveSyncSettings()">저장 및 동기화</button>
       ${cur?`<button class="btn btn-ghost btn-sm" onclick="pullFromCloud()">클라우드에서 새로고침</button>
       <button class="btn btn-danger btn-sm" onclick="disconnectSync()">연결 해제</button>`:''}
+    </div>
+    <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--rule)">
+      <label style="font-family:var(--mono);font-size:.62rem;letter-spacing:.07em;color:var(--ink3);text-transform:uppercase">데이터 백업</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+        <button class="btn btn-ghost btn-sm" onclick="importJSON()">JSON 불러오기</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">CSV 내보내기</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportJSON()">JSON 내보내기</button>
+      </div>
     </div>`;
   document.querySelector('#modal h2').textContent='클라우드 동기화';
   document.querySelector('.modal-actions').style.display='none';
