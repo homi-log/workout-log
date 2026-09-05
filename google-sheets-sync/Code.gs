@@ -10,12 +10,15 @@
  *        - 액세스 권한: 모든 사용자
  *   4) 나온 웹 앱 URL(.../exec)을 운동일지 앱의 ☁ 버튼에 붙여넣기
  *
- * 데이터는 숨김 시트 '_db'의 A1 셀에 JSON 한 덩어리로 저장됩니다(정확한 원본).
+ * 데이터는 숨김 시트 '_db'의 A열에 JSON을 청크 단위로 나눠 저장됩니다(정확한 원본).
+ * 셀 하나에 다 넣으면 Google 시트의 셀당 5만자 한도에 걸려 기록이 많아지면 저장이
+ * 조용히 실패하므로, 여러 행에 나눠 쓰고 불러올 때 이어붙입니다.
  * 사람이 보기 좋은 표는 '기록' 시트에 자동 생성됩니다(보기 전용, 직접 편집 금지).
  */
 
 var DB_SHEET = '_db';
 var VIEW_SHEET = '기록';
+var CHUNK_SIZE = 45000; // 셀당 5만자 한도보다 여유를 둔 청크 크기
 
 function doGet(e){ return route_(e); }
 function doPost(e){ return route_(e); }
@@ -55,8 +58,13 @@ function dbSheet_(){
   return sh;
 }
 
+// A열에 나눠 저장된 JSON 청크를 전부 읽어 이어붙임 (예전 단일 A1 저장 방식과도 호환)
 function loadData_(){
-  var raw = dbSheet_().getRange('A1').getValue();
+  var sh = dbSheet_();
+  var lastRow = sh.getLastRow();
+  if (lastRow < 1) return [];
+  var values = sh.getRange(1, 1, lastRow, 1).getValues();
+  var raw = values.map(function(r){ return r[0] || ''; }).join('');
   if (!raw) return [];
   try {
     var d = JSON.parse(raw);
@@ -64,8 +72,17 @@ function loadData_(){
   } catch (err) { return []; }
 }
 
+// JSON을 셀당 CHUNK_SIZE 글자씩 나눠 A열 여러 행에 저장 (셀 하나에 다 넣으면 5만자 한도에 걸림)
 function saveData_(data){
-  dbSheet_().getRange('A1').setValue(JSON.stringify(data));
+  var json = JSON.stringify(data);
+  var chunks = [];
+  for (var i = 0; i < json.length; i += CHUNK_SIZE) {
+    chunks.push([json.slice(i, i + CHUNK_SIZE)]);
+  }
+  if (chunks.length === 0) chunks = [['']];
+  var sh = dbSheet_();
+  sh.clearContents(); // 이전보다 청크 수가 줄었을 때 남은 옛 청크가 안 섞이게 먼저 비움
+  sh.getRange(1, 1, chunks.length, 1).setValues(chunks);
   writeView_(data);
 }
 
