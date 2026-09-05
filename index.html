@@ -89,13 +89,16 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:3
 .session-foot{display:flex;justify-content:flex-end;gap:6px;padding-top:8px;border-top:1px solid var(--rule)}
 
 /* 식단 표 구성 */
-.mtt-row{display:grid;grid-template-columns:repeat(4,1fr) auto;gap:4px;align-items:center}
+/* 칼로리 칸을 고정폭으로 둬서 헤더/값/서브합계/음식별 행이 모두 같은 칼럼선에 맞도록 함
+   (auto폭이면 "칼로리" 라벨과 "1586kcal" 값의 너비가 달라 행마다 칼럼이 어긋남) */
+.mtt-row{display:grid;grid-template-columns:repeat(4,1fr) 60px;gap:4px;align-items:center}
 .mtt-row>span{text-align:center;min-width:0;overflow:hidden;text-overflow:ellipsis}
-.mtt-row>span:last-child{text-align:right;padding-left:8px}
+.mtt-row>span:last-child{text-align:right;padding-left:4px}
 .meal-totals-table{background:var(--bg);border-radius:8px;margin-bottom:10px;overflow:hidden}
 .mtt-head{padding:8px 10px 4px;font-size:.62rem;color:var(--ink3)}
 .mtt-vals{padding:0 10px 8px;font-size:.82rem;font-weight:700;color:var(--ink)}
 .mtt-vals .mtt-cal{color:var(--accent)}
+.unit{font-size:.68em;font-weight:400;color:var(--ink3);margin-left:1px}
 .meal-sections{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
 .meal-section{border:1px solid var(--rule);border-radius:8px;overflow:hidden}
 .meal-section-head{display:flex;align-items:center;gap:8px;padding:9px 11px;cursor:pointer;user-select:none;background:var(--paper)}
@@ -1842,7 +1845,7 @@ function renderMealLog(){
 
     const dayTotals=mealMacroRow('mtt-vals',[
       fmtNum(sumField(items,'sodium')), fmtNum(sumField(items,'fat')), fmtNum(sumField(items,'carbs')),
-      fmtNum(sumField(items,'protein')), Math.round(totalCal)+'kcal'
+      fmtNum(sumField(items,'protein')), Math.round(totalCal)+'<span class="unit">kcal</span>'
     ]);
 
     const sections=groups.map((g,gi)=>{
@@ -1859,7 +1862,7 @@ function renderMealLog(){
               <div class="mi-name">${escHtml(x.food||x.type||'식사')}</div>
               ${x.memo?`<div class="mi-serving">${escHtml(x.memo)}</div>`:''}
             </div>
-            <div class="mi-cal">${x.calories?Math.round(parseFloat(x.calories))+'kcal':''}</div>
+            <div class="mi-cal">${x.calories?Math.round(parseFloat(x.calories))+'<span class="unit">kcal</span>':''}</div>
           </div>${macroLine?`<div class="meal-item-macros">${macroLine}</div>`:''}`;
       }).join('');
       return `<div class="meal-section open" id="${secId}">
