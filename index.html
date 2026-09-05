@@ -524,6 +524,14 @@ async function handleJSONFile(event){
 // 유틸
 // ══════════════════════════════════
 function uid(){ return 'u'+Date.now()+Math.random().toString(36).slice(2,5); }
+// Date 객체를 이 기기의 로컬 날짜 기준 YYYY-MM-DD로 변환.
+// toISOString()은 UTC로 변환하므로 한국(UTC+9) 등에서 자정 근처에 하루 밀려 보이는 버그가 생김 — 반드시 이걸 씀.
+function localDateStr(d){
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,'0');
+  const day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
 function toast(msg){
   const el=document.getElementById('toast');
   el.textContent=msg; el.classList.add('show');
@@ -826,7 +834,7 @@ function copySessionToNew(id){
   const s=DB.find(x=>x.id===id);
   if(!s) return;
   switchTab('add');
-  document.getElementById('in-date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('in-date').value=localDateStr(new Date());
   const memoEl=document.getElementById('in-memo');
   memoEl.value=''; memoEl.style.height='';
   document.getElementById('in-src').value=s.src||'personal';
@@ -1164,7 +1172,7 @@ function hideAc(n){
   setTimeout(()=>{const dd=document.getElementById('ac-'+n);if(dd)dd.classList.remove('show');},150);
 }
 function clearForm(){
-  document.getElementById('in-date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('in-date').value=localDateStr(new Date());
   const memoEl=document.getElementById('in-memo');
   memoEl.value=''; memoEl.style.height='';
   document.getElementById('in-src').value='personal';
@@ -1297,13 +1305,13 @@ function weekStart(dateStr){
   const d=new Date(dateStr+'T00:00:00');
   const day=(d.getDay()+6)%7; // 0=월 ... 6=일
   d.setDate(d.getDate()-day);
-  return d.toISOString().slice(0,10);
+  return localDateStr(d);
 }
 // 그 주의 마지막 날(일요일) 날짜
 function weekEnd(wkStartStr){
   const d=new Date(wkStartStr+'T00:00:00');
   d.setDate(d.getDate()+6);
-  return d.toISOString().slice(0,10);
+  return localDateStr(d);
 }
 function renderWeeklyVolume(){
   const title=document.getElementById('trend-title');
@@ -1566,7 +1574,7 @@ function disconnectSync(){
 
 function exportJSON(){
   const content=JSON.stringify(DB,null,2);
-  const filename='운동일지_'+new Date().toISOString().slice(0,10)+'.json';
+  const filename='운동일지_'+localDateStr(new Date())+'.json';
   downloadOrShow(filename, content, 'application/json');
 }
 function exportCSV(){
@@ -1583,7 +1591,7 @@ function exportCSV(){
     })
   );
   const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const filename='운동일지_'+new Date().toISOString().slice(0,10)+'.csv';
+  const filename='운동일지_'+localDateStr(new Date())+'.csv';
   downloadOrShow(filename, '\uFEFF'+csv, 'text/csv;charset=utf-8');
 }
 
