@@ -538,7 +538,7 @@ function conditionSummaryText(condition){
     const v=c[cfg.key];
     if(v==null || v==='정상') return;
     const vals = Array.isArray(v) ? v : [v];
-    if(vals.length) parts.push(`${cfg.label}(${vals.join(', ')})`);
+    if(vals.length) parts.push(`${cfg.icon} ${cfg.label}(${vals.join(', ')})`);
   });
   return parts.length ? parts.join(', ') : '오늘 컨디션: 정상';
 }
