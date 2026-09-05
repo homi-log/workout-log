@@ -406,7 +406,8 @@ const SEED = [];
 // ══════════════════════════════════
 let DB = [];
 let WEIGHT_DB = []; // 체중 기록: {id,date,weight,bodyFat,memo}
-let MEAL_DB = [];   // 식단 기록: {id,date,memo,meals:[{type,food,calories,carbs,fat,protein,memo}]}
+let MEAL_DB = [];   // 식단 기록: {id,date,memo,raw,meals:[{type,food,calories,carbs,fat,protein,memo,saturatedFat,fiber,sugar,sodium,cholesterol,potassium}]}
+// raw: FatSecret 등에서 원본 CSV로 가져온 경우, 그날의 원본 텍스트 블록을 그대로 보관(무손실 백업용)
 let currentSrcFilter = '';
 let rowCount = 0;
 let mealRowCount = 0;
@@ -469,13 +470,18 @@ function normalizeMealItem(x){
     type:x.type?String(x.type):'', food:x.food?String(x.food):'',
     calories:x.calories!=null?String(x.calories):'', carbs:x.carbs!=null?String(x.carbs):'',
     fat:x.fat!=null?String(x.fat):'', protein:x.protein!=null?String(x.protein):'',
-    memo:x.memo?String(x.memo):''
+    memo:x.memo?String(x.memo):'',
+    // FatSecret 등에서 가져온 세부 영양성분(수동 입력 항목에는 보통 비어있음)
+    saturatedFat:x.saturatedFat!=null?String(x.saturatedFat):'',
+    fiber:x.fiber!=null?String(x.fiber):'', sugar:x.sugar!=null?String(x.sugar):'',
+    sodium:x.sodium!=null?String(x.sodium):'', cholesterol:x.cholesterol!=null?String(x.cholesterol):'',
+    potassium:x.potassium!=null?String(x.potassium):''
   };
 }
 function normalizeMealEntry(m){
   if(!m || typeof m!=='object' || !m.date) return null;
   const meals = Array.isArray(m.meals) ? m.meals.map(normalizeMealItem) : [];
-  return { id:m.id||uid(), date:String(m.date), memo:m.memo?String(m.memo):'', meals };
+  return { id:m.id||uid(), date:String(m.date), memo:m.memo?String(m.memo):'', raw:m.raw?String(m.raw):'', meals };
 }
 function normalizeWeightDB(){ WEIGHT_DB = WEIGHT_DB.map(normalizeWeightEntry).filter(Boolean); }
 function normalizeMealDB(){ MEAL_DB = MEAL_DB.map(normalizeMealEntry).filter(Boolean); }
@@ -1538,6 +1544,7 @@ function importWeightCSV(){
 // 식단 기록
 // ══════════════════════════════════
 // 식사 한 칸 입력(끼니구분/음식/칼로리/탄단지/메모) 추가 — 운동 입력 카드와 같은 톤의 UI를 재사용
+const MEAL_STD_KEYS=['type','food','calories','carbs','fat','protein','memo'];
 function addMealRow(data, container){
   mealRowCount++;
   const n=mealRowCount, d=data||{};
@@ -1545,11 +1552,17 @@ function addMealRow(data, container){
   const div=document.createElement('div');
   div.className='ex-input-card'; div.id='mealrow-'+n;
   const types=['아침','점심','저녁','간식'];
+  // FatSecret 등에서 가져온, 목록에 없는 끼니 이름(예: "아침 식사")도 옵션으로 얹어 그대로 보존
+  const typeOptions = (d.type && !types.includes(d.type)) ? [d.type, ...types] : types;
+  // 표준 입력칸 외의 값(영양성분 세부 항목 등)은 편집 후 저장해도 사라지지 않도록 데이터로 보관
+  const extra={};
+  Object.keys(d).forEach(k=>{ if(!MEAL_STD_KEYS.includes(k) && d[k]!=null && d[k]!=='') extra[k]=d[k]; });
+  div.dataset.extra=JSON.stringify(extra);
   div.innerHTML=`
     <div class="ex-input-top">
       <span class="ex-input-num">${wrap.children.length+1}</span>
       <select class="meal-type-select" style="font-family:var(--sans);font-size:.85rem;padding:8px 10px;border:1px solid var(--rule);border-radius:6px;background:#fff;color:var(--ink)">
-        ${types.map(t=>`<option value="${t}" ${d.type===t?'selected':''}>${t}</option>`).join('')}
+        ${typeOptions.map(t=>`<option value="${escAttr(t)}" ${d.type===t?'selected':''}>${escHtml(t)}</option>`).join('')}
       </select>
       <button type="button" class="btn btn-danger" onclick="removeMealRow(${n})">✕</button>
     </div>
@@ -1572,7 +1585,11 @@ function removeMealRow(n){
   renumberRows(wrap);
 }
 function getMealRowData(wrap){
-  return Array.from(wrap.children).map(card=>({
+  return Array.from(wrap.children).map(card=>{
+    let extra={};
+    try{ extra=JSON.parse(card.dataset.extra||'{}'); }catch(e){}
+    return {
+    ...extra,
     type: card.querySelector('.meal-type-select')?.value||'',
     food: card.querySelector('.meal-food')?.value.trim()||'',
     calories: card.querySelector('.meal-cal')?.value.trim()||'',
@@ -1580,7 +1597,8 @@ function getMealRowData(wrap){
     fat: card.querySelector('.meal-fat')?.value.trim()||'',
     protein: card.querySelector('.meal-protein')?.value.trim()||'',
     memo: card.querySelector('.meal-memo')?.value.trim()||''
-  })).filter(m=>m.food||m.calories||m.carbs||m.fat||m.protein);
+    };
+  }).filter(m=>m.food||m.calories||m.carbs||m.fat||m.protein);
 }
 function clearMealForm(){
   document.getElementById('m-date').value=localDateStr(new Date());
@@ -1614,8 +1632,9 @@ function openCalorieImport(){
   document.getElementById('modal-body').innerHTML=`
     <p style="font-size:.8rem;color:var(--ink2);margin-bottom:10px;line-height:1.5">
       "날짜,칼로리" 형태의 텍스트를 한 줄에 하나씩 붙여넣거나, FatSecret에서 내보낸 Food Diary CSV 원본을
-      그대로 붙여넣으세요 (하루치씩 여러 번 이어 붙여도 인식돼요).<br>
-      이미 그 날짜에 식단 기록이 있으면 새로 만들지 않고 "가져온 칼로리" 항목만 추가합니다.
+      그대로 붙여넣으세요. 원본을 붙여넣으면 끼니·음식·영양성분(탄단지/포화지방/당류/나트륨 등)까지
+      손실 없이 모두 들어갑니다 (하루치씩 여러 번 이어 붙여도 각각 인식돼요).<br>
+      이미 그 날짜에 식단 기록이 있으면 건너뜁니다.
     </p>
     <textarea id="calorie-import-text" placeholder="2026-08-31,1489&#10;2026-09-01,1443&#10;..."
       style="width:100%;height:160px;font-family:var(--mono);font-size:.7rem;padding:10px;border:1px solid var(--rule);border-radius:8px;background:#fff;color:var(--ink);resize:vertical"></textarea>
@@ -1625,22 +1644,96 @@ function openCalorieImport(){
   document.querySelector('.modal-actions').style.display='none';
   document.getElementById('modal-overlay').classList.add('show');
 }
-// FatSecret 사이트에서 그대로 내보낸 "Food Diary Report" CSV 원본을 인식해서
-// 하루 총 칼로리 줄("요일, M월 D, YYYY",총칼로리,...)만 뽑아낸다.
-// 여러 날짜의 내보내기를 이어 붙여 한 번에 붙여넣어도 각각 인식된다.
-function parseFatSecretExportCSV(text){
-  const re=/"[가-힣]+요일,\s*(\d{1,2})월\s*(\d{1,2}),\s*(\d{4})"\s*,\s*([\d.]+)/g;
-  const entries=[];
-  let m;
-  while((m=re.exec(String(text)))){
-    const [, mo, d, y, cal]=m;
-    entries.push({date:`${y}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`, calories:parseFloat(cal)});
+// 큰따옴표를 인식하는 CSV 한 줄 분리(따옴표 안의 쉼표/줄 앞뒤 공백은 보존)
+function splitCsvLine(line){
+  const out=[]; let cur=''; let inQ=false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(c==='"'){
+      if(inQ && line[i+1]==='"'){ cur+='"'; i++; }
+      else inQ=!inQ;
+    } else if(c===',' && !inQ){ out.push(cur); cur=''; }
+    else cur+=c;
   }
-  return entries;
+  out.push(cur);
+  return out;
 }
-function parseCalorieCSV(text){
-  const fatsecret=parseFatSecretExportCSV(text);
-  if(fatsecret.length) return fatsecret;
+// FatSecret 내보내기 특유의 들여쓰기 단계(0=날짜/총계, 1=끼니, 2=음식, 3=1회 제공량)를 판별.
+// 쉼표가 포함된 줄은 통째로 큰따옴표로 감싸져 있어 들여쓰기가 따옴표 "안쪽"에 있으므로 먼저 벗겨낸다.
+function fsIndentLevel(rawLine){
+  let s=rawLine;
+  if(s.startsWith('"')){ s=s.slice(1); if(s.endsWith('"')) s=s.slice(0,-1); }
+  const m=s.match(/^( *)/);
+  return m[1].length;
+}
+function fsPickNutrients(fields){
+  const n=i=>{ const v=parseFloat((fields[i]||'').trim()); return isNaN(v)?null:v; };
+  return { calories:n(1), fat:n(2), satFat:n(3), carbs:n(4), fiber:n(5), sugar:n(6), protein:n(7), sodium:n(8), cholesterol:n(9), potassium:n(10) };
+}
+// FatSecret "Food Diary Report" CSV 원본(주석 줄, 끼니별 하위 음식, 1회 제공량까지 포함된 계층 구조)을
+// 통째로 붙여넣어도 날짜/끼니/음식/영양성분을 무손실로 뽑아낸다. 여러 날짜분을 이어 붙여도 각각 인식된다.
+const KOREAN_DAY_RE=/^[가-힣]+요일,\s*(\d{1,2})월\s*(\d{1,2}),\s*(\d{4})$/;
+function parseFatSecretFullCSV(text){
+  const rawLines=String(text).split(/\r?\n/);
+  const days=[]; let curDay=null, curMeal=null, curItem=null;
+  for(const raw of rawLines){
+    if(!raw.trim()) continue;
+    if(raw.trim().startsWith('#')) continue;
+    const level=fsIndentLevel(raw);
+    const fields=splitCsvLine(raw).map(s=>s.trim());
+    const first=fields[0]||'';
+    if(level===0){
+      const dm=first.match(KOREAN_DAY_RE);
+      if(dm){
+        if(curDay) days.push(curDay);
+        const [,mo,d,y]=dm;
+        curDay={ date:`${y}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`, meals:[], rawLines:[] };
+        curMeal=null; curItem=null;
+      }
+      if(curDay) curDay.rawLines.push(raw);
+      continue;
+    }
+    if(!curDay) continue;
+    curDay.rawLines.push(raw);
+    if(level===1){
+      curMeal={ type:first, items:[] };
+      curDay.meals.push(curMeal);
+      curItem=null;
+    } else if(level===2){
+      if(!curMeal){ curMeal={type:'', items:[]}; curDay.meals.push(curMeal); }
+      curItem={ food:first, ...fsPickNutrients(fields), serving:'' };
+      curMeal.items.push(curItem);
+    } else if(level===3 && curItem){
+      curItem.serving = curItem.serving ? curItem.serving+' '+first : first;
+    }
+  }
+  if(curDay) days.push(curDay);
+  return days;
+}
+function fatSecretDayToMealEntry(day){
+  const meals=[];
+  day.meals.forEach(meal=>{
+    meal.items.forEach(item=>{
+      meals.push({
+        type: meal.type||'', food: item.food||'',
+        calories: item.calories!=null?String(item.calories):'',
+        carbs: item.carbs!=null?String(item.carbs):'',
+        fat: item.fat!=null?String(item.fat):'',
+        protein: item.protein!=null?String(item.protein):'',
+        saturatedFat: item.satFat!=null?String(item.satFat):'',
+        fiber: item.fiber!=null?String(item.fiber):'',
+        sugar: item.sugar!=null?String(item.sugar):'',
+        sodium: item.sodium!=null?String(item.sodium):'',
+        cholesterol: item.cholesterol!=null?String(item.cholesterol):'',
+        potassium: item.potassium!=null?String(item.potassium):'',
+        memo: item.serving||''
+      });
+    });
+  });
+  return { date:day.date, memo:'FatSecret 가져오기', raw:day.rawLines.join('\n'), meals };
+}
+// "날짜,칼로리" 2열 텍스트(붙여쓰기 수동 입력용) 파서 — FatSecret 원본이 아닐 때의 대체 경로
+function parseSimpleCalorieCSV(text){
   const lines=String(text).split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
   const entries=[];
   lines.forEach(line=>{
@@ -1660,25 +1753,28 @@ function parseCalorieCSV(text){
 function importCalorieCSV(){
   const text=document.getElementById('calorie-import-text').value;
   const statusEl=document.getElementById('calorie-import-status');
-  const parsed=parseCalorieCSV(text);
-  if(!parsed.length){
+  const days=parseFatSecretFullCSV(text);
+  const entries = days.length
+    ? days.map(fatSecretDayToMealEntry)
+    : parseSimpleCalorieCSV(text).map(e=>({ date:e.date, memo:'', meals:[{type:'가져온 칼로리', food:'', calories:String(e.calories), carbs:'', fat:'', protein:'', memo:''}] }));
+  if(!entries.length){
     statusEl.style.color='var(--warn)';
-    statusEl.textContent='인식된 항목이 없어요. "날짜,칼로리" 형식인지 확인해주세요.';
+    statusEl.textContent='인식된 항목이 없어요. "날짜,칼로리" 형식이거나 FatSecret CSV 원본인지 확인해주세요.';
     return;
   }
   const existingDates=new Set(MEAL_DB.map(m=>m.date));
   let added=0, skipped=0;
-  parsed.forEach(e=>{
+  entries.forEach(e=>{
     if(existingDates.has(e.date)){ skipped++; return; } // 그 날짜에 이미 식단 기록이 있으면 건너뜀(중복/충돌 방지)
     existingDates.add(e.date);
-    MEAL_DB.push({id:uid(), date:e.date, memo:'', meals:[{type:'가져온 칼로리', food:'', calories:String(e.calories), carbs:'', fat:'', protein:'', memo:''}]});
+    MEAL_DB.push({id:uid(), date:e.date, memo:e.memo, raw:e.raw||'', meals:e.meals});
     added++;
   });
   if(added>0) saveDB();
   renderMealLog();
   statusEl.style.color='var(--accent)';
   statusEl.textContent=`✓ ${added}개 추가됨 (이미 기록 있는 날짜 ${skipped}개는 건너뜀)`;
-  if(added>0) setTimeout(()=>{ closeModal(); toast(`✓ 칼로리 ${added}일치를 가져왔어요.`); }, 900);
+  if(added>0) setTimeout(()=>{ closeModal(); toast(`✓ 식단 ${added}일치를 가져왔어요.`); }, 900);
 }
 function toggleMealCard(id){ document.getElementById('mcard-'+id)?.classList.toggle('open'); }
 let pendingMealDelete=null;
@@ -1720,6 +1816,12 @@ function renderMealLog(){
       if(x.carbs)    macros.push(`<span class="ex-chip">탄 ${escHtml(x.carbs)}g</span>`);
       if(x.fat)      macros.push(`<span class="ex-chip">지 ${escHtml(x.fat)}g</span>`);
       if(x.protein)  macros.push(`<span class="ex-chip">단 ${escHtml(x.protein)}g</span>`);
+      if(x.saturatedFat) macros.push(`<span class="ex-chip">포화지방 ${escHtml(x.saturatedFat)}g</span>`);
+      if(x.sugar)    macros.push(`<span class="ex-chip">당류 ${escHtml(x.sugar)}g</span>`);
+      if(x.fiber)    macros.push(`<span class="ex-chip">식이섬유 ${escHtml(x.fiber)}g</span>`);
+      if(x.sodium)   macros.push(`<span class="ex-chip">나트륨 ${escHtml(x.sodium)}mg</span>`);
+      if(x.cholesterol) macros.push(`<span class="ex-chip">콜레스테롤 ${escHtml(x.cholesterol)}mg</span>`);
+      if(x.potassium) macros.push(`<span class="ex-chip">칼륨 ${escHtml(x.potassium)}mg</span>`);
       return `<div class="ex-card">
         <span class="ex-num">${i+1}</span>
         <div class="ex-info">
