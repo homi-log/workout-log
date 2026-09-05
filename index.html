@@ -88,6 +88,33 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:3
 .session-memo-full{font-size:.75rem;color:var(--ink2);background:var(--bg);border-radius:8px;padding:9px 11px;margin-bottom:10px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
 .session-foot{display:flex;justify-content:flex-end;gap:6px;padding-top:8px;border-top:1px solid var(--rule)}
 
+/* 식단 표 구성 */
+.mtt-row{display:grid;grid-template-columns:repeat(4,1fr) auto;gap:4px;align-items:center}
+.mtt-row>span{text-align:center;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.mtt-row>span:last-child{text-align:right;padding-left:8px}
+.meal-totals-table{background:var(--bg);border-radius:8px;margin-bottom:10px;overflow:hidden}
+.mtt-head{padding:8px 10px 4px;font-size:.62rem;color:var(--ink3)}
+.mtt-vals{padding:0 10px 8px;font-size:.82rem;font-weight:700;color:var(--ink)}
+.mtt-vals .mtt-cal{color:var(--accent)}
+.meal-sections{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.meal-section{border:1px solid var(--rule);border-radius:8px;overflow:hidden}
+.meal-section-head{display:flex;align-items:center;gap:8px;padding:9px 11px;cursor:pointer;user-select:none;background:var(--paper)}
+.meal-section-head .ms-icon{font-size:.95rem}
+.meal-section-head .ms-name{font-size:.85rem;font-weight:700;flex:1;min-width:0}
+.meal-section-head .ms-cal{font-size:.85rem;font-weight:700;color:var(--ink)}
+.meal-section-head .ms-cal small{font-size:.62rem;font-weight:400;color:var(--ink3);margin-left:2px}
+.meal-section-head .ms-chevron{font-size:.6rem;color:var(--ink3);transition:transform .2s}
+.meal-section.open .ms-chevron{transform:rotate(180deg)}
+.meal-section-body{display:none}
+.meal-section.open .meal-section-body{display:block}
+.meal-section-body .mtt-row{padding:6px 11px;font-size:.65rem;color:var(--ink3);background:var(--bg)}
+.meal-item-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:8px 11px 2px}
+.meal-item-row:not(:first-child){border-top:1px solid var(--rule)}
+.mi-name{font-size:.82rem;font-weight:600}
+.mi-serving{font-size:.68rem;color:var(--accent);margin-top:1px}
+.mi-cal{font-size:.82rem;font-weight:700;white-space:nowrap}
+.meal-item-macros{padding:0 11px 8px;font-size:.65rem;color:var(--ink3)}
+
 /* 폼 */
 .form-card{background:var(--paper);border:1px solid var(--rule);border-radius:12px;padding:20px 16px;margin-bottom:20px}
 .unit-bar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--rule)}
@@ -328,16 +355,8 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:3
   <!-- 식단 -->
   <div class="panel" id="panel-meal">
     <div class="form-card">
-      <div class="form-row">
-        <div class="field f-date"><label>날짜</label><input type="date" id="m-date"></div>
-        <div class="field f-memo"><label>메모</label><textarea id="m-memo" placeholder="예: 컨디션 보통" rows="1" oninput="autoGrow(this)"></textarea></div>
-      </div>
-      <div class="ex-inputs" id="meal-inputs"></div>
-      <button class="add-ex-btn" onclick="addMealRow(null,document.getElementById('meal-inputs'))">＋ 식사 추가</button>
       <div class="form-actions">
-        <button class="btn btn-ghost" onclick="openCalorieImport()">칼로리 CSV 가져오기</button>
-        <button class="btn btn-ghost" onclick="clearMealForm()">초기화</button>
-        <button class="btn btn-primary" onclick="saveMealEntry()">저장</button>
+        <button class="btn btn-primary" style="width:100%" onclick="openCalorieImport()">칼로리 CSV 가져오기</button>
       </div>
     </div>
     <div class="session-list" id="meal-list"></div>
@@ -1600,34 +1619,7 @@ function getMealRowData(wrap){
     };
   }).filter(m=>m.food||m.calories||m.carbs||m.fat||m.protein);
 }
-function clearMealForm(){
-  document.getElementById('m-date').value=localDateStr(new Date());
-  const memoEl=document.getElementById('m-memo');
-  memoEl.value=''; memoEl.style.height='';
-  const wrap=document.getElementById('meal-inputs');
-  wrap.innerHTML=''; mealRowCount=0;
-  addMealRow(null, wrap); addMealRow(null, wrap);
-}
-let savingMeal=false;
-function saveMealEntry(){
-  if(savingMeal) return;
-  const date=document.getElementById('m-date').value;
-  if(!date){ alert('날짜를 입력해주세요.'); return; }
-  const meals=getMealRowData(document.getElementById('meal-inputs'));
-  if(!meals.length){ alert('식사를 입력해주세요.'); return; }
-  savingMeal=true;
-  try {
-    MEAL_DB.push({id:uid(), date, memo:document.getElementById('m-memo').value.trim(), meals});
-    saveDB();
-    toast('✓ 식단이 저장되었습니다.');
-    clearMealForm();
-    renderMealLog();
-  } finally {
-    savingMeal=false;
-  }
-}
-// FatSecret 등에서 뽑은 "날짜,칼로리" 형태의 텍스트를 붙여넣어 하루 총 칼로리를 일괄 등록
-// (PDF는 브라우저에서 직접 못 읽으니, 날짜/총칼로리만 뽑은 텍스트로 붙여넣는 방식)
+// FatSecret에서 내보낸 식단 CSV를 붙여넣어 하루치 식단을 일괄 등록
 function openCalorieImport(){
   document.getElementById('modal-body').innerHTML=`
     <p style="font-size:.8rem;color:var(--ink2);margin-bottom:10px;line-height:1.5">
@@ -1799,6 +1791,32 @@ function deleteMealEntry(id){
     }
   },4000);
 }
+// 끼니 이름을 아침→점심→저녁→간식 순으로 정렬하기 위한 우선순위(그 외는 맨 뒤)
+function mealTypeRank(type){
+  const t=type||'';
+  const order=['아침','점심','저녁','간식'];
+  const idx=order.findIndex(k=>t.startsWith(k));
+  return idx===-1 ? order.length : idx;
+}
+function mealTypeIcon(type){
+  const t=type||'';
+  if(t.startsWith('아침')) return '🌅';
+  if(t.startsWith('점심')) return '☀️';
+  if(t.startsWith('저녁')) return '🌙';
+  if(t.startsWith('간식')) return '🍪';
+  return '🍽';
+}
+function fmtNum(v){
+  const n=parseFloat(v);
+  return isNaN(n) ? '-' : String(Math.round(n*10)/10);
+}
+function sumField(items, key){
+  return items.reduce((s,x)=>s+(parseFloat(x[key])||0),0);
+}
+function mealMacroRow(cls, vals){
+  return `<div class="mtt-row ${cls}"><span>${vals[0]}</span><span>${vals[1]}</span><span>${vals[2]}</span><span>${vals[3]}</span><span class="mtt-cal">${vals[4]}</span></div>`;
+}
+function toggleMealSection(id){ document.getElementById(id)?.classList.toggle('open'); }
 function renderMealLog(){
   const list=document.getElementById('meal-list');
   if(!list) return;
@@ -1808,29 +1826,53 @@ function renderMealLog(){
     return;
   }
   list.innerHTML=sorted.map(m=>{
-    const totalCal=m.meals.reduce((sum,x)=>sum+(parseFloat(x.calories)||0),0);
-    const preview=[...new Set(m.meals.map(x=>x.type).filter(Boolean))].join(', ');
-    const mealCards=m.meals.map((x,i)=>{
-      const macros=[];
-      if(x.calories) macros.push(`<span class="ex-chip">${escHtml(x.calories)}kcal</span>`);
-      if(x.carbs)    macros.push(`<span class="ex-chip">탄 ${escHtml(x.carbs)}g</span>`);
-      if(x.fat)      macros.push(`<span class="ex-chip">지 ${escHtml(x.fat)}g</span>`);
-      if(x.protein)  macros.push(`<span class="ex-chip">단 ${escHtml(x.protein)}g</span>`);
-      if(x.saturatedFat) macros.push(`<span class="ex-chip">포화지방 ${escHtml(x.saturatedFat)}g</span>`);
-      if(x.sugar)    macros.push(`<span class="ex-chip">당류 ${escHtml(x.sugar)}g</span>`);
-      if(x.fiber)    macros.push(`<span class="ex-chip">식이섬유 ${escHtml(x.fiber)}g</span>`);
-      if(x.sodium)   macros.push(`<span class="ex-chip">나트륨 ${escHtml(x.sodium)}mg</span>`);
-      if(x.cholesterol) macros.push(`<span class="ex-chip">콜레스테롤 ${escHtml(x.cholesterol)}mg</span>`);
-      if(x.potassium) macros.push(`<span class="ex-chip">칼륨 ${escHtml(x.potassium)}mg</span>`);
-      return `<div class="ex-card">
-        <span class="ex-num">${i+1}</span>
-        <div class="ex-info">
-          <div class="ex-name">${escHtml(x.type||'식사')}${x.food?' · '+escHtml(x.food):''}</div>
-          ${macros.length?`<div class="ex-chips">${macros.join('')}</div>`:''}
-          ${x.memo?`<div class="ex-note">${escHtml(x.memo)}</div>`:''}
+    const items=m.meals;
+    const totalCal=sumField(items,'calories');
+    const preview=[...new Set(items.map(x=>x.type).filter(Boolean))].join(', ');
+
+    // 끼니(아침/점심/저녁/간식 등)별로 묶어 FatSecret 스타일의 구분된 섹션으로 표시
+    const groups=[];
+    items.forEach(x=>{
+      const key=x.type||'기타';
+      let g=groups.find(g=>g.type===key);
+      if(!g){ g={type:key, items:[]}; groups.push(g); }
+      g.items.push(x);
+    });
+    groups.sort((a,b)=>mealTypeRank(a.type)-mealTypeRank(b.type) || a.type.localeCompare(b.type));
+
+    const dayTotals=mealMacroRow('mtt-vals',[
+      fmtNum(sumField(items,'sodium')), fmtNum(sumField(items,'fat')), fmtNum(sumField(items,'carbs')),
+      fmtNum(sumField(items,'protein')), Math.round(totalCal)+'kcal'
+    ]);
+
+    const sections=groups.map((g,gi)=>{
+      const secCal=sumField(g.items,'calories');
+      const secId=`msec-${m.id}-${gi}`;
+      const subRow=mealMacroRow('',[
+        fmtNum(sumField(g.items,'sodium')), fmtNum(sumField(g.items,'fat')), fmtNum(sumField(g.items,'carbs')), fmtNum(sumField(g.items,'protein')), ''
+      ]);
+      const itemRows=g.items.map(x=>{
+        const hasMacro = x.sodium || x.fat || x.carbs || x.protein;
+        const macroLine = hasMacro ? mealMacroRow('', [fmtNum(x.sodium), fmtNum(x.fat), fmtNum(x.carbs), fmtNum(x.protein), '']) : '';
+        return `<div class="meal-item-row">
+            <div>
+              <div class="mi-name">${escHtml(x.food||x.type||'식사')}</div>
+              ${x.memo?`<div class="mi-serving">${escHtml(x.memo)}</div>`:''}
+            </div>
+            <div class="mi-cal">${x.calories?Math.round(parseFloat(x.calories))+'kcal':''}</div>
+          </div>${macroLine?`<div class="meal-item-macros">${macroLine}</div>`:''}`;
+      }).join('');
+      return `<div class="meal-section open" id="${secId}">
+        <div class="meal-section-head" onclick="toggleMealSection('${secId}')">
+          <span class="ms-icon">${mealTypeIcon(g.type)}</span>
+          <span class="ms-name">${escHtml(g.type||'기타')}</span>
+          <span class="ms-cal">${Math.round(secCal)}<small>kcal</small></span>
+          <span class="ms-chevron">▾</span>
         </div>
+        <div class="meal-section-body">${subRow}${itemRows}</div>
       </div>`;
     }).join('');
+
     return `<div class="session-card" id="mcard-${m.id}">
       <div class="session-head" onclick="toggleMealCard('${m.id}')">
         <div>
@@ -1841,7 +1883,11 @@ function renderMealLog(){
       </div>
       <div class="session-body">
         ${m.memo?`<div class="session-memo-full">${escHtml(m.memo)}</div>`:''}
-        <div class="ex-list">${mealCards}</div>
+        <div class="meal-totals-table">
+          <div class="mtt-row mtt-head"><span>나트륨</span><span>지방</span><span>탄수</span><span>단백질</span><span class="mtt-cal">칼로리</span></div>
+          ${dayTotals}
+        </div>
+        <div class="meal-sections">${sections}</div>
         <div class="session-foot">
           <button class="btn btn-danger" onclick="deleteMealEntry('${m.id}')">삭제</button>
           <button class="btn btn-ghost btn-sm" onclick="openEditMeal('${m.id}')">편집</button>
@@ -2528,7 +2574,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('filter-ex').addEventListener('input', ()=>{ renderLog(); updateFilterClearBtn(); });
   clearForm();
   clearWeightForm();
-  clearMealForm();
   updateSyncBtn();
   updateUnitToggle();
 
