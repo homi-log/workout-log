@@ -63,7 +63,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:3
 .session-card.planned.open .session-head{border-bottom-color:var(--plan-border)}
 .session-date{font-family:var(--mono);font-size:.85rem;font-weight:500;color:var(--accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .session-card.planned .session-date{color:var(--plan)}
-.session-memo{font-size:.7rem;color:var(--ink3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.session-memo{font-size:.7rem;color:var(--ink3);margin-top:1px;line-height:1.4}
 .session-memo-hint{margin-left:6px;font-size:.68rem;color:var(--ink3)}
 .session-meta{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .session-source{font-family:var(--mono);font-size:.6rem;padding:2px 7px;border-radius:10px;border:1px solid var(--rule);white-space:nowrap;flex-shrink:0}
@@ -555,10 +555,12 @@ function weightUnit(str){
   if(/kg|킬로|키로/i.test(s)) return 'kg';
   return getUnit();
 }
-// 화면 표시용: 단위가 없으면 기본 단위를 붙여서 반환
+// 화면 표시용: 단위가 없으면 기본 단위를 붙이고, 숫자와 단위 사이에 공백을 넣어 가독성을 높임
+// (저장되는 원본 값은 공백 없이 유지 — 이건 표시 전용 가공)
 function displayWeight(w){
   if(!w) return '';
-  return weightHasUnit(w) ? String(w) : (String(w)+getUnit());
+  const withUnit = weightHasUnit(w) ? String(w) : (String(w)+getUnit());
+  return withUnit.replace(/(\d)(kg|lbs?|파운드|킬로|키로)$/i, '$1 $2');
 }
 // 비교·추이용: kg 숫자로 환산 (lbs면 변환)
 function weightToKg(str){
@@ -720,8 +722,7 @@ function renderLog(){
     const isPlanned = s.src==='planned';
     const badgeCls = s.src==='session'?'src-badge-session':s.src==='planned'?'src-badge-planned':'src-badge-personal';
     const badgeTxt = s.src==='session'?'세션지':s.src==='planned'?'예정':'개인일지';
-    const preview = [...new Set(s.exercises.map(e=>e.name))].slice(0,3).join(', ')
-      +(s.exercises.length>3?` 외 ${s.exercises.length-3}종`:'');
+    const preview = [...new Set(s.exercises.map(e=>e.name))].join(', ');
     // 헤더엔 첫 줄만 짧게 미리보기 (전체 메모는 펼쳤을 때 아래 본문에 표시)
     const memoFirstLine = s.memo ? escHtml(s.memo.split('\n')[0]) : '';
     const memoHtml = memoFirstLine?`<span class="session-memo-hint">${memoFirstLine}</span>`:'';
