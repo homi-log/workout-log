@@ -1613,7 +1613,8 @@ function saveMealEntry(){
 function openCalorieImport(){
   document.getElementById('modal-body').innerHTML=`
     <p style="font-size:.8rem;color:var(--ink2);margin-bottom:10px;line-height:1.5">
-      "날짜,칼로리" 형태의 텍스트를 한 줄에 하나씩 붙여넣으세요 (예: 2026-09-01,1443).<br>
+      "날짜,칼로리" 형태의 텍스트를 한 줄에 하나씩 붙여넣거나, FatSecret에서 내보낸 Food Diary CSV 원본을
+      그대로 붙여넣으세요 (하루치씩 여러 번 이어 붙여도 인식돼요).<br>
       이미 그 날짜에 식단 기록이 있으면 새로 만들지 않고 "가져온 칼로리" 항목만 추가합니다.
     </p>
     <textarea id="calorie-import-text" placeholder="2026-08-31,1489&#10;2026-09-01,1443&#10;..."
@@ -1624,7 +1625,22 @@ function openCalorieImport(){
   document.querySelector('.modal-actions').style.display='none';
   document.getElementById('modal-overlay').classList.add('show');
 }
+// FatSecret 사이트에서 그대로 내보낸 "Food Diary Report" CSV 원본을 인식해서
+// 하루 총 칼로리 줄("요일, M월 D, YYYY",총칼로리,...)만 뽑아낸다.
+// 여러 날짜의 내보내기를 이어 붙여 한 번에 붙여넣어도 각각 인식된다.
+function parseFatSecretExportCSV(text){
+  const re=/"[가-힣]+요일,\s*(\d{1,2})월\s*(\d{1,2}),\s*(\d{4})"\s*,\s*([\d.]+)/g;
+  const entries=[];
+  let m;
+  while((m=re.exec(String(text)))){
+    const [, mo, d, y, cal]=m;
+    entries.push({date:`${y}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`, calories:parseFloat(cal)});
+  }
+  return entries;
+}
 function parseCalorieCSV(text){
+  const fatsecret=parseFatSecretExportCSV(text);
+  if(fatsecret.length) return fatsecret;
   const lines=String(text).split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
   const entries=[];
   lines.forEach(line=>{
